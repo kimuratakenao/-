@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>木村剛直の業務ポータル</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style id="page-style">
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#e8edf5; --border:#d7dfeb;
+  --ink:#152238; --ink-soft:#5c6b82;
+  --navy:#1f3a5f; --navy-ink:#132540; --navy-soft:#e2eaf5;
+  --orange:#e07b39; --orange-ink:#a85321; --orange-soft:#fbe8d8;
+  --danger:#b23b2e; --danger-soft:#f5e0dd;
+  --card-navy-1:#1f3a5f; --card-navy-2:#152a45; --card-ink:#f4f7fb; --card-ink-soft:#b9c8de;
+  --card-accent:#e07b39; --card-accent-light:#f2a565;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1520; --surface:#161d2b; --surface-2:#1c2536; --border:#2b3650;
+    --ink:#e9edf5; --ink-soft:#96a3ba;
+    --navy:#7ea3d6; --navy-ink:#dce8fb; --navy-soft:#22314d;
+    --orange:#f2965a; --orange-ink:#ffd9b0; --orange-soft:#3a2a1c;
+    --danger:#e2776a; --danger-soft:#3a2621;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1520; --surface:#161d2b; --surface-2:#1c2536; --border:#2b3650;
+  --ink:#e9edf5; --ink-soft:#96a3ba;
+  --navy:#7ea3d6; --navy-ink:#dce8fb; --navy-soft:#22314d;
+  --orange:#f2965a; --orange-ink:#ffd9b0; --orange-soft:#3a2a1c;
+  --danger:#e2776a; --danger-soft:#3a2621;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  padding:0 20px 56px; max-width:880px; margin:0 auto;
+}
+h1,h2,.brand{font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;}
+h1,h2{text-wrap:balance; margin:0;}
+header.top{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:28px 0 18px; border-bottom:2px solid var(--navy); flex-wrap:wrap;
+}
+header.top .brand{font-size:22px; font-weight:700; letter-spacing:.01em; color:var(--navy-ink);}
+header.top .brand::before{content:"";display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--orange); margin-right:9px;}
+header.top .tagline{font-size:12.5px; color:var(--ink-soft);}
+section{margin-top:36px;}
+section > h2{
+  font-size:14px; font-weight:700; color:var(--navy-ink); letter-spacing:.06em;
+  text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+section > h2 .num{
+  width:22px; height:22px; border-radius:6px; background:var(--navy); color:#fff;
+  display:inline-flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700;
+}
+.hint{font-size:12px; color:var(--ink-soft); margin:-8px 0 14px; font-weight:400; text-transform:none; letter-spacing:normal;}
+
+/* intro */
+.intro-pro{
+  position:relative; overflow:hidden; border-radius:18px;
+  background:linear-gradient(155deg, var(--card-navy-1) 0%, var(--card-navy-2) 78%);
+  box-shadow:0 20px 50px -18px rgba(21,42,69,.45);
+  padding:32px 28px 26px;
+}
+.intro-pro .corner{
+  position:absolute; top:0; right:0; width:120px; height:120px;
+  background:var(--card-accent); clip-path:polygon(100% 0, 100% 100%, 0 0); opacity:.92;
+}
+.intro-pro .rule{
+  position:absolute; left:0; right:0; bottom:0; height:5px;
+  background:repeating-linear-gradient(90deg, var(--card-accent) 0 16px, transparent 16px 23px); opacity:.85;
+}
+.intro-pro .content{position:relative; z-index:1;}
+.intro-pro .avatar{
+  width:56px; height:56px; border-radius:14px; margin-bottom:18px;
+  background:rgba(244,247,251,.12); border:1.5px solid rgba(244,247,251,.2);
+  display:flex; align-items:center; justify-content:center;
+  font-family:"Zen Kaku Gothic New",sans-serif; font-weight:900; font-size:22px; color:var(--card-accent-light);
+}
+.intro-pro .eyebrow{
+  font-size:11px; letter-spacing:.2em; font-weight:700; color:var(--card-accent-light);
+  text-transform:uppercase; margin-bottom:8px;
+}
+.intro-pro .name[contenteditable]{
+  font-family:"Zen Kaku Gothic New",sans-serif; font-weight:900; font-size:clamp(26px,6vw,34px);
+  color:var(--card-ink); margin:0 0 12px; line-height:1.2; display:block;
+  outline:none; border-radius:8px; padding:2px 4px; margin-left:-4px;
+}
+.intro-pro .dept[contenteditable]{
+  display:inline-flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600;
+  color:var(--card-ink); background:rgba(244,247,251,.12); border:1px solid rgba(244,247,251,.22);
+  border-radius:999px; padding:5px 14px 5px 10px; margin-bottom:16px; outline:none;
+}
+.intro-pro .dept[contenteditable]::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--card-accent); display:inline-block;}
+.intro-pro .role[contenteditable]{
+  font-size:14px; line-height:1.8; color:var(--card-ink-soft); margin:0; max-width:46ch;
+  outline:none; border-radius:8px; padding:2px 4px; margin-left:-4px;
+}
+.intro-pro [contenteditable]:hover{background:rgba(244,247,251,.06);}
+.intro-pro [contenteditable]:focus{background:rgba(244,247,251,.1); box-shadow:0 0 0 2px var(--card-accent) inset;}
+.intro-pro [contenteditable]:empty:before{content:attr(data-placeholder); color:rgba(185,200,222,.6);}
+[contenteditable]:hover{background:var(--surface-2);}
+[contenteditable]:focus{background:var(--navy-soft); box-shadow:0 0 0 2px var(--navy) inset;}
+[contenteditable]:empty:before{content:attr(data-placeholder); color:var(--ink-soft);}
+
+/* task cards */
+.card-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:14px;
+}
+.task-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:16px; position:relative; display:flex; flex-direction:column; gap:12px;
+}
+.task-card .name[contenteditable]{
+  font-size:16px; font-weight:700; line-height:1.4; outline:none; border-radius:6px; padding:2px 4px; margin:-2px -4px -2px -4px;
+}
+.task-card .desc[contenteditable]{
+  font-size:12.5px; line-height:1.6; color:var(--ink-soft); outline:none; border-radius:6px; padding:2px 4px; margin:-4px -4px 0 -4px;
+  white-space:pre-wrap;
+}
+.task-card--top{border-color:var(--orange); box-shadow:0 0 0 1.5px var(--orange), 0 10px 24px -14px var(--orange);}
+.top-badge{
+  position:absolute; top:8px; left:16px; background:var(--orange); color:#fff; font-size:10.5px; font-weight:700;
+  letter-spacing:.04em; padding:3px 9px; border-radius:999px;
+}
+.task-card--top .name[contenteditable]{margin-top:8px;}
+.monthly{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  padding-top:10px; border-top:1px dashed var(--border);
+}
+.monthly .unit{font-size:11px; color:var(--ink-soft);}
+.monthly .val{font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--navy-ink);}
+.task-card--top .monthly .val{color:var(--orange-ink);}
+.ideal-block{background:var(--surface-2); border-radius:8px; padding:8px 10px;}
+.ideal-label{font-size:10.5px; color:var(--ink-soft); letter-spacing:.03em; margin-bottom:2px;}
+.ideal[contenteditable]{
+  font-size:12.5px; line-height:1.6; outline:none; border-radius:5px; padding:1px 3px; margin:-1px -3px;
+  white-space:pre-wrap;
+}
+.total-line{
+  margin-top:14px; text-align:right; font-size:13.5px; color:var(--ink-soft); font-weight:600;
+}
+.total-line span{font-size:17px; font-weight:800; color:var(--navy-ink); font-variant-numeric:tabular-nums; margin-left:6px;}
+.task-stats{display:flex; gap:10px;}
+.stat{flex:1; background:var(--surface-2); border-radius:8px; padding:8px 10px;}
+.stat .stat-label{font-size:10.5px; color:var(--ink-soft); letter-spacing:.03em;}
+.stat .stat-value{font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:2px; outline:none; border-radius:5px; padding:0 3px; margin-left:-3px;}
+.stat .stat-value[contenteditable]:hover, .name[contenteditable]:hover{background:var(--surface);}
+.stat .stat-value[contenteditable]:focus{background:var(--bg); box-shadow:0 0 0 2px var(--navy) inset;}
+.icon-btn{
+  position:absolute; top:8px; right:8px; width:22px; height:22px; border:none; border-radius:6px;
+  background:transparent; color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:15px; line-height:1;
+}
+.icon-btn:hover{background:var(--danger-soft); color:var(--danger);}
+.add-tile{
+  border:1.5px dashed var(--border); border-radius:12px; background:transparent; color:var(--ink-soft);
+  display:flex; align-items:center; justify-content:center; gap:6px; min-height:96px; cursor:pointer; font-size:13.5px;
+}
+.add-tile:hover{border-color:var(--orange); color:var(--orange-ink); background:var(--orange-soft);}
+
+/* links */
+.link-list{display:flex; flex-wrap:wrap; gap:10px;}
+.link-chip{
+  display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:9px 10px 9px 12px;
+}
+.link-chip a{color:var(--navy-ink); font-weight:600; font-size:14px; text-decoration:none;}
+.link-chip a:hover{text-decoration:underline;}
+.link-chip svg{flex:none; color:var(--orange);}
+.link-chip .icon-btn{position:static; margin-left:2px;}
+.link-form{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+.link-form input{
+  font:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--border); border-radius:8px;
+  background:var(--surface); color:var(--ink); min-width:140px; flex:1;
+}
+.link-form input:focus{outline:none; box-shadow:0 0 0 2px var(--navy);}
+.btn{
+  font:inherit; font-size:13.5px; font-weight:600; padding:8px 14px; border-radius:8px; border:none;
+  background:var(--orange); color:#fff; cursor:pointer;
+}
+.btn:hover{background:var(--orange-ink);}
+
+/* memo */
+textarea#memo{
+  width:100%; min-height:160px; resize:vertical; font:inherit; font-size:14.5px; line-height:1.7;
+  padding:16px 18px; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--ink);
+}
+textarea#memo:focus{outline:none; box-shadow:0 0 0 2px var(--navy);}
+.save-note{font-size:11.5px; color:var(--ink-soft); margin-top:6px; height:14px;}
+footer.foot{margin-top:44px; padding-top:16px; border-top:1px solid var(--border); font-size:11.5px; color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script id="state-data" type="application/json">
+{
+  "intro": {"name": "木村剛直", "dept": "管理部", "role": "賃貸管理業務全般（契約書作成、入居者対応、オーナー対応、仲介会社対応など）を担当"},
+  "tasks": [
+    {"id": "t1", "name": "管理受注：PM・BM契約書作成", "desc": "PM契約書・重説作成、BM契約書作成", "freq": "1", "time": "180分", "ideal": ""},
+    {"id": "t2", "name": "管理受注：いい生活入力（貸主、借主契約内容、募集図面作成など）", "desc": "管理移管があり次第 各種手続き", "freq": "1", "time": "120分", "ideal": ""},
+    {"id": "t3", "name": "管理受注：保証会社手続き", "desc": "管理移管する物件の保証会社手続き", "freq": "1", "time": "20分", "ideal": ""},
+    {"id": "t4", "name": "仲介会社：賃貸借契約書類作成～鍵渡し～AD手続き", "desc": "新規申込みがあり次第 自社審査開始。オーナー様承認後契約書類一式の作成～鍵渡し～AD支払い手続き", "freq": "3", "time": "120分", "ideal": ""},
+    {"id": "t5", "name": "仲介会社：管理物件紹介営業", "desc": "反響が少ない物件があれば、仲介業者に直接飛び込み営業", "freq": "1", "time": "180分", "ideal": ""},
+    {"id": "t6", "name": "入居者：電話対応（業者含む）", "desc": "日頃の電話対応", "freq": "230", "time": "5分", "ideal": ""},
+    {"id": "t7", "name": "入居者：解約手続き（協力業者手配、精算書作成）", "desc": "解約が入り次第 各種手続き", "freq": "2", "time": "30分", "ideal": ""},
+    {"id": "t8", "name": "オーナー：入居審査、更新時賃料相談", "desc": "新規申込みがあり自社審査完了後、オーナー様に審査の促し。更新時期の物件の賃料上げの根拠と一緒に報告。", "freq": "3", "time": "60分", "ideal": ""},
+    {"id": "t9", "name": "オーナー：定期訪問", "desc": "オーナー様へ物件の現状報告とコミュニケーション", "freq": "2", "time": "60分", "ideal": ""},
+    {"id": "t10", "name": "その他：社内資料作成", "desc": "会議資料 など", "freq": "5", "time": "90分", "ideal": ""}
+  ],
+  "links": [
+    {"id": "l1", "name": "社内ポータル", "url": "https://example.com/portal"},
+    {"id": "l2", "name": "勤怠システム", "url": "https://example.com/attendance"}
+  ],
+  "memo": "※ AIでの置き換え可否は、この一覧を見ながら検討する。"
+}
+</script>
+<script id="app-script">
+(function(){
+  var state = null;
+  var container = document.getElementById('app');
+  var uid = 0;
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function normalizeUrl(u){
+    u = (u || '').trim();
+    if (!u) return '';
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    return u;
+  }
+
+  function initials(name){
+    var t = (name || '').trim();
+    return t ? t.charAt(0) : '?';
+  }
+
+  function parseNum(v){
+    var m = String(v == null ? '' : v).match(/[\d.]+/);
+    return m ? parseFloat(m[0]) : 0;
+  }
+
+  function monthlyHours(t){
+    return (parseNum(t.freq) * parseNum(t.time)) / 60;
+  }
+
+  function fmtHours(h){
+    return h.toFixed(1) + '時間/月';
+  }
+
+  function linkIcon(){
+    return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></svg>';
+  }
+
+  function portalTitle(s){
+    var name = (s.intro.name || '').trim();
+    return name ? name + 'の業務ポータル' : '業務ポータル';
+  }
+
+  function renderBody(s){
+    var html = '';
+    html += '<header class="top"><div class="brand">' + esc(portalTitle(s)) + '</div><div class="tagline">自己紹介・業務・リンク・メモをひとまとめに</div></header>';
+
+    // 1. intro
+    html += '<section id="sec-intro"><h2><span class="num">1</span>自己紹介</h2>';
+    html += '<div class="intro-pro"><div class="corner"></div><div class="content">';
+    html += '<div class="avatar">' + esc(initials(s.intro.name)) + '</div>';
+    html += '<div class="eyebrow">Self Introduction</div>';
+    html += '<div class="name" contenteditable="true" data-field="intro-name" data-placeholder="お名前を入力">' + esc(s.intro.name) + '</div>';
+    html += '<div class="dept" contenteditable="true" data-field="intro-dept" data-placeholder="部署名を入力">' + esc(s.intro.dept) + '</div>';
+    html += '<div class="role" contenteditable="true" data-field="intro-role" data-placeholder="担当している仕事を入力">' + esc(s.intro.role) + '</div>';
+    html += '</div><div class="rule"></div></div></section>';
+
+    // 2. tasks
+    html += '<section id="sec-tasks"><h2><span class="num">2</span>今の業務一覧</h2>';
+    html += '<div class="hint">カードをクリックして直接編集できます。お客様名・案件名・金額は「A様」「〇〇万円」のように置き換えてください。月あたりの時間が大きい順に並び、最も大きい業務はハイライトされます。</div>';
+    html += '<div class="card-grid">';
+    var sorted = s.tasks.slice().sort(function(a, b){ return monthlyHours(b) - monthlyHours(a); });
+    var totalHours = s.tasks.reduce(function(sum, t){ return sum + monthlyHours(t); }, 0);
+    sorted.forEach(function(t, i){
+      var isTop = i === 0 && s.tasks.length > 0 && monthlyHours(t) > 0;
+      html += '<div class="task-card' + (isTop ? ' task-card--top' : '') + '" data-id="' + t.id + '">';
+      if (isTop) html += '<span class="top-badge">最多</span>';
+      html += '<button class="icon-btn" data-action="del-task" data-id="' + t.id + '" title="削除">×</button>';
+      html += '<div class="name" contenteditable="true" data-field="task-name" data-id="' + t.id + '" data-placeholder="業務名">' + esc(t.name) + '</div>';
+      html += '<div class="desc" contenteditable="true" data-field="task-desc" data-id="' + t.id + '" data-placeholder="具体的に何をしているか（任意）">' + esc(t.desc || '') + '</div>';
+      html += '<div class="task-stats">';
+      html += '<div class="stat"><div class="stat-label">月の回数</div><div class="stat-value" contenteditable="true" data-field="task-freq" data-id="' + t.id + '" data-placeholder="回数">' + esc(t.freq) + '</div></div>';
+      html += '<div class="stat"><div class="stat-label">1回の時間（分）</div><div class="stat-value" contenteditable="true" data-field="task-time" data-id="' + t.id + '" data-placeholder="時間">' + esc(t.time) + '</div></div>';
+      html += '</div>';
+      html += '<div class="monthly"><span class="unit">月あたりの時間</span><span class="val">' + fmtHours(monthlyHours(t)) + '</span></div>';
+      html += '<div class="ideal-block"><div class="ideal-label">こうなったら理想</div><div class="ideal" contenteditable="true" data-field="task-ideal" data-id="' + t.id + '" data-placeholder="例：システムが自動で処理してくれる、AIが下書きしてくれる 等">' + esc(t.ideal || '') + '</div></div>';
+      html += '</div>';
+    });
+    html += '<button class="add-tile" data-action="add-task">＋ 業務を追加</button>';
+    html += '</div>';
+    html += '<div class="total-line">合計：<span>' + fmtHours(totalHours) + '</span></div>';
+    html += '</section>';
+
+    // 3. links
+    html += '<section id="sec-links"><h2><span class="num">3</span>よく使うリンク集</h2>';
+    html += '<div class="link-list">';
+    s.links.forEach(function(l){
+      html += '<div class="link-chip" data-id="' + l.id + '">' + linkIcon() +
+        '<a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer">' + esc(l.name || l.url) + '</a>' +
+        '<button class="icon-btn" data-action="del-link" data-id="' + l.id + '" title="削除">×</button></div>';
+    });
+    html += '</div>';
+    html += '<div class="link-form">';
+    html += '<input type="text" id="new-link-name" placeholder="リンク名（例：経費精算システム）">';
+    html += '<input type="text" id="new-link-url" placeholder="URL">';
+    html += '<button class="btn" data-action="add-link">追加</button>';
+    html += '</div></section>';
+
+    // 4. memo
+    html += '<section id="sec-memo"><h2><span class="num">4</span>メモ</h2>';
+    html += '<textarea id="memo" placeholder="気づいたこと、引き継ぎたいこと、後で書き足したいことを自由に書けます">' + esc(s.memo) + '</textarea>';
+    html += '<div class="save-note" id="save-note"></div>';
+    html += '</section>';
+
+    html += '<footer class="foot">このページはそのまま編集できますが、この公開版では変更内容は保存されません（ブラウザを再読み込みすると元に戻ります）。</footer>';
+    return html;
+  }
+
+  function render(){
+    container.innerHTML = renderBody(state);
+    document.title = portalTitle(state);
+  }
+
+  var saveTimer = null;
+  function scheduleSave(){
+    var note = document.getElementById('save-note');
+    if (note) note.textContent = '';
+  }
+
+  function newId(prefix){
+    uid++;
+    return prefix + Date.now().toString(36) + uid;
+  }
+
+  function onClick(e){
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    var id = btn.getAttribute('data-id');
+
+    if (action === 'add-task') {
+      state.tasks.push({id: newId('t'), name: '', desc: '', freq: '', time: '', ideal: ''});
+      render(); scheduleSave();
+      var el = container.querySelector('.task-card:last-child .name');
+      if (el) el.focus();
+    } else if (action === 'del-task') {
+      if (window.confirm('この業務を削除しますか？')) {
+        state.tasks = state.tasks.filter(function(t){ return t.id !== id; });
+        render(); scheduleSave();
+      }
+    } else if (action === 'del-link') {
+      if (window.confirm('このリンクを削除しますか？')) {
+        state.links = state.links.filter(function(l){ return l.id !== id; });
+        render(); scheduleSave();
+      }
+    } else if (action === 'add-link') {
+      var nameInput = document.getElementById('new-link-name');
+      var urlInput = document.getElementById('new-link-url');
+      var url = normalizeUrl(urlInput.value);
+      var name = (nameInput.value || '').trim();
+      if (!url) { urlInput.focus(); return; }
+      state.links.push({id: newId('l'), name: name || url, url: url});
+      render(); scheduleSave();
+    }
+  }
+
+  function onFocusOut(e){
+    var el = e.target;
+    var field = el.getAttribute && el.getAttribute('data-field');
+    if (!field) {
+      if (el.id === 'memo') {
+        state.memo = el.value;
+        scheduleSave();
+      }
+      return;
+    }
+    var id = el.getAttribute('data-id');
+    var text = el.textContent.trim();
+    if (field === 'intro-name') state.intro.name = text;
+    else if (field === 'intro-dept') state.intro.dept = text;
+    else if (field === 'intro-role') state.intro.role = text;
+    else if (field === 'task-name') state.tasks.forEach(function(t){ if (t.id === id) t.name = text; });
+    else if (field === 'task-desc') state.tasks.forEach(function(t){ if (t.id === id) t.desc = text; });
+    else if (field === 'task-freq') state.tasks.forEach(function(t){ if (t.id === id) t.freq = text; });
+    else if (field === 'task-time') state.tasks.forEach(function(t){ if (t.id === id) t.time = text; });
+    else if (field === 'task-ideal') state.tasks.forEach(function(t){ if (t.id === id) t.ideal = text; });
+    if (field === 'task-freq' || field === 'task-time') render();
+    scheduleSave();
+  }
+
+  function onKeydown(e){
+    if (e.target.matches('[contenteditable]') && e.key === 'Enter' && e.target.getAttribute('data-field') !== 'task-desc') {
+      e.preventDefault();
+      e.target.blur();
+    }
+  }
+
+  function boot(initial){
+    state = initial;
+    render();
+    container.addEventListener('click', onClick);
+    container.addEventListener('focusout', onFocusOut, true);
+    container.addEventListener('keydown', onKeydown);
+    document.addEventListener('focusout', function(e){
+      if (e.target && e.target.id === 'memo') onFocusOut(e);
+    }, true);
+  }
+
+  var dataEl = document.getElementById('state-data');
+  var initialState = JSON.parse(dataEl.textContent);
+  boot(initialState);
+})();
+</script>
+</body>
+</html>

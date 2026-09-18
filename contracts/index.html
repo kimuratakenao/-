@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>契約進捗・入退去管理アプリ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#e8edf5; --border:#d7dfeb;
+  --ink:#152238; --ink-soft:#5c6b82;
+  --navy:#1f3a5f; --navy-ink:#132540; --navy-soft:#e2eaf5;
+  --orange:#e07b39; --orange-ink:#a85321; --orange-soft:#fbe8d8;
+  --danger:#b23b2e; --danger-soft:#f5e0dd;
+  --ok:#2e7d4f; --ok-soft:#dff0e4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1520; --surface:#161d2b; --surface-2:#1c2536; --border:#2b3650;
+    --ink:#e9edf5; --ink-soft:#96a3ba;
+    --navy:#7ea3d6; --navy-ink:#dce8fb; --navy-soft:#22314d;
+    --orange:#f2965a; --orange-ink:#ffd9b0; --orange-soft:#3a2a1c;
+    --danger:#e2776a; --danger-soft:#3a2621;
+    --ok:#6fcf97; --ok-soft:#1c3226;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1520; --surface:#161d2b; --surface-2:#1c2536; --border:#2b3650;
+  --ink:#e9edf5; --ink-soft:#96a3ba;
+  --navy:#7ea3d6; --navy-ink:#dce8fb; --navy-soft:#22314d;
+  --orange:#f2965a; --orange-ink:#ffd9b0; --orange-soft:#3a2a1c;
+  --danger:#e2776a; --danger-soft:#3a2621;
+  --ok:#6fcf97; --ok-soft:#1c3226;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  margin:0; padding:0 20px 56px;
+}
+h1,h2,h3,.brand{font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;}
+.wrap{max-width:1240px; margin:0 auto;}
+header.top{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:28px 0 18px; border-bottom:2px solid var(--navy); flex-wrap:wrap;
+}
+header.top .brand{font-size:22px; font-weight:700; letter-spacing:.01em; color:var(--navy-ink);}
+header.top .brand::before{content:"";display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--orange); margin-right:9px;}
+header.top .tagline{font-size:12.5px; color:var(--ink-soft);}
+.phase-note{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+
+.tabs{display:flex; gap:8px; margin-top:22px; flex-wrap:wrap;}
+.tab-btn{
+  padding:10px 18px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:var(--surface-2); color:var(--ink-soft); font-weight:700; font-size:13.5px; cursor:pointer;
+}
+.tab-btn.active{background:var(--surface); color:var(--navy-ink); border-color:var(--navy); box-shadow:0 -2px 0 var(--navy) inset;}
+.tab-btn .count{display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:var(--danger); color:#fff; font-size:11px;}
+.tab-btn .count[hidden]{display:none;}
+
+.panel{
+  background:var(--surface); border:1px solid var(--border); border-radius:0 10px 10px 10px;
+  padding:20px; margin-top:-1px;
+}
+.panel[hidden]{display:none;}
+
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+.toolbar input[type=text], .toolbar select{
+  padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:var(--surface);
+  color:var(--ink); font-size:13px;
+}
+.toolbar .spacer{flex:1;}
+.btn{
+  padding:9px 16px; border-radius:7px; border:1px solid var(--navy); background:var(--navy); color:#fff;
+  font-weight:700; font-size:13px; cursor:pointer;
+}
+.btn.secondary{background:var(--surface); color:var(--navy-ink); border-color:var(--navy-soft);}
+.btn.danger{background:var(--surface); color:var(--danger); border-color:var(--danger);}
+.btn.small{padding:6px 12px; font-size:12px;}
+.btn:disabled{opacity:.5; cursor:default;}
+
+.note-box{
+  background:var(--navy-soft); border:1px solid var(--navy); border-radius:8px;
+  padding:10px 14px; margin-bottom:16px; font-size:12.5px; color:var(--navy-ink);
+}
+.warn-box{
+  background:var(--orange-soft); border:1px solid var(--orange); border-radius:8px;
+  padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--orange-ink);
+}
+.warn-box h3{margin:0 0 6px; font-size:13px; color:var(--orange-ink);}
+
+table{width:100%; border-collapse:collapse; font-size:12.5px;}
+thead th{
+  background:var(--navy-soft); color:var(--navy-ink); text-align:left; padding:8px 10px;
+  border:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none;
+}
+thead th:hover{background:var(--orange-soft);}
+tbody td{padding:7px 10px; border:1px solid var(--border); white-space:nowrap;}
+tbody tr:hover{background:var(--surface-2);}
+tbody tr.row-highlight{background:var(--orange-soft);}
+.status-chip{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap;}
+.status-申込中,.status-未着手,.status-未登録{background:var(--surface-2); color:var(--ink-soft);}
+.status-契約中,.status-工事中,.status-進行中,.status-解約手続中{background:var(--orange-soft); color:var(--orange-ink);}
+.status-解約済,.status-完了,.status-登録済,.status-契約完了{background:var(--ok-soft); color:var(--ok);}
+.status-未対象{background:var(--surface-2); color:var(--ink-soft);}
+.status-契約{background:var(--navy-soft); color:var(--navy-ink);}
+.status-解約{background:var(--danger-soft); color:var(--danger);}
+.status-外注,.status-設備{background:var(--orange-soft); color:var(--orange-ink);}
+.status-自社施工{background:var(--ok-soft); color:var(--ok);}
+.chk{color:var(--ok); font-weight:700;}
+.chk-no{color:var(--border);}
+.row-actions button{background:none; border:none; cursor:pointer; color:var(--navy-ink); font-size:12px; text-decoration:underline; padding:0; margin-right:8px;}
+.empty-note{padding:20px; text-align:center; color:var(--ink-soft); font-size:13px;}
+.table-scroll{overflow-x:auto;}
+
+.gap-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+.gap-item{
+  border:1px solid var(--orange); background:var(--orange-soft); border-radius:8px; padding:12px 14px;
+  display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.gap-item .txt{font-size:13px; color:var(--orange-ink);}
+.gap-item .txt b{display:block; font-size:13.5px; margin-bottom:2px;}
+
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(10,16,28,.45); display:flex; align-items:flex-start;
+  justify-content:center; padding:32px 16px; overflow-y:auto; z-index:50;
+}
+.modal-backdrop[hidden]{display:none;}
+.modal{
+  background:var(--surface); border-radius:12px; border:1px solid var(--border); width:100%; max-width:820px;
+  padding:22px 24px 24px;
+}
+.modal h2{font-size:16px; margin:0 0 4px; color:var(--navy-ink);}
+.modal .sub{font-size:12px; color:var(--ink-soft); margin-bottom:16px;}
+.modal fieldset{border:1px solid var(--border); border-radius:8px; margin:0 0 16px; padding:14px 14px 6px;}
+.modal legend{font-size:12.5px; font-weight:700; color:var(--navy-ink); padding:0 6px;}
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;}
+.form-grid .full{grid-column:1/-1;}
+.field label{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:4px;}
+.field label .req{color:var(--danger);}
+.field input[type=text],.field input[type=date],.field input[type=number],.field textarea,.field select{
+  width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;
+  background:var(--surface); color:var(--ink); font-size:13px; font-family:inherit;
+}
+.field textarea{resize:vertical; min-height:44px;}
+.field-computed{padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:var(--surface-2); color:var(--ink-soft); font-size:13px;}
+.field.checkbox{display:flex; align-items:center; gap:8px; flex-direction:row; padding-top:22px;}
+.field.checkbox input{width:16px; height:16px;}
+.field.checkbox label{margin:0;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+.field-error{border-color:var(--danger) !important;}
+.form-msg{font-size:12.5px; color:var(--danger); margin-top:10px; min-height:1em;}
+
+.detail-tabs{display:flex; gap:6px; margin-bottom:14px;}
+.detail-tab-btn{padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); font-size:12px; cursor:pointer; color:var(--ink-soft); font-weight:700;}
+.detail-tab-btn.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+.detail-section[hidden]{display:none;}
+
+.sub-list{margin-top:10px; border:1px dashed var(--border); border-radius:8px; padding:10px;}
+.sub-list h4{margin:0 0 8px; font-size:12.5px; color:var(--navy-ink);}
+.sub-list .empty-note{padding:8px; font-size:12px;}
+.sub-row{display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:6px 4px; border-bottom:1px solid var(--border);}
+.sub-row:last-child{border-bottom:none;}
+
+.foot{margin-top:40px; font-size:11.5px; color:var(--ink-soft); text-align:center;}
+.conn-note{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">契約進捗・入退去管理アプリ</div>
+      <div class="tagline">事務（契約・解約）と現場（点検・原状回復）を1つの契約データにまとめ、抜け漏れを検知します</div>
+      <div class="phase-note">※ 通電一覧はまだ未実装です。それ以外（契約・解約・入居前点検・退去原状回復・設備工事・自社施工）はここに集約されています。</div>
+    </div>
+    <div class="conn-note" id="conn-note"></div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="contracts">① 契約進捗（事務）</button>
+    <button class="tab-btn" data-tab="inspections">② 入居前点検</button>
+    <button class="tab-btn" data-tab="restorations">③ 退去原状回復</button>
+    <button class="tab-btn" data-tab="workorders">④ 設備工事</button>
+    <button class="tab-btn" data-tab="gaps">⑤ 漏れチェック <span class="count" id="gap-count" hidden>0</span></button>
+  </div>
+
+  <section class="panel" id="panel-contracts">
+    <div class="toolbar">
+      <input type="text" id="search-contracts" placeholder="物件名・部屋番号・氏名で検索">
+      <select id="status-filter-contracts">
+        <option value="">ステータス: すべて</option>
+        <option value="申込中">申込中</option>
+        <option value="契約中">契約中</option>
+        <option value="契約完了">契約完了</option>
+        <option value="解約手続中">解約手続中</option>
+        <option value="解約済">解約済</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-contracts">CSV出力</button>
+      <button class="btn" id="add-contract">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-contracts"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-inspections" hidden>
+    <div class="note-box">入居前点検・鍵交換の記録です。契約を選んで登録します。1契約に複数件登録することもできます。</div>
+    <div class="toolbar">
+      <input type="text" id="search-inspections" placeholder="物件名・部屋番号で検索">
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-inspections">CSV出力</button>
+      <button class="btn" id="add-inspection">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-inspections"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-restorations" hidden>
+    <div class="note-box">退去後の原状回復工事の記録です（売上・原価・粗利を含む）。契約を選んで登録します。</div>
+    <div class="toolbar">
+      <input type="text" id="search-restorations" placeholder="物件名・部屋番号で検索">
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-restorations">CSV出力</button>
+      <button class="btn" id="add-restoration">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-restorations"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-workorders" hidden>
+    <div class="note-box">入居中に発生した設備工事・自社施工を1件ずつ記録します（売上・原価・粗利を含む）。1つの契約に複数件登録できます。</div>
+    <div class="toolbar">
+      <input type="text" id="search-workorders" placeholder="物件名・部屋番号・工事内容で検索">
+      <select id="type-filter-workorders">
+        <option value="">区分: すべて</option>
+        <option value="外注">外注</option>
+        <option value="自社施工">自社施工</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-workorders">CSV出力</button>
+      <button class="btn" id="add-workorder">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-workorders"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-gaps" hidden>
+    <div class="note-box">未入力の項目がある契約・点検・原状回復・設備工事をすべて一覧表示します。事務側と現場側の食い違い（例：解約なのに原状回復が未登録）も含みます。</div>
+    <div class="toolbar">
+      <select id="tag-filter-gaps">
+        <option value="">タグ: すべて</option>
+      </select>
+      <div class="spacer"></div>
+    </div>
+    <div class="table-scroll"><table id="table-gaps"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <div class="foot">全ユーザーの更新はリアルタイムで反映されます。</div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal" id="modal"></div>
+</div>
+<div id="datalists" style="display:none"></div>
+
+<script>
+'use strict';
+
+// ---- Supabase setup ----
+// このデプロイにはenv varがないため、middleware.tsの合言葉と同じ方針でここに直接記載しています。
+// アクセス制御はVercelのBasic認証（middleware.ts）側で行い、このanon/publishable keyはBasic認証を
+// 通過した部署内メンバーだけが使う前提です（財務項目=売上/原価/粗利を含む）。
+const SUPABASE_URL = 'https://dyyuxaglncsokiurrvzx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_keakR_o8fRedv-cwSSI-GQ__msV3jag';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ---- Field definitions ----
+const CONTRACT_TYPE_FIELDS = {
+  record_type:  { label:'登録区分', type:'select', options:['契約','解約'], required:true },
+};
+
+// 最終更新者はどのフォームでも一番下（キャンセル・保存ボタンの直前）に表示する
+const UPDATED_BY_FIELD = {
+  updated_by:{ label:'最終更新者', type:'text', required:true, suggest:'name' },
+};
+function updatedByFieldHtml(record){
+  return '<div class="form-grid">' + renderField('updated_by', UPDATED_BY_FIELD.updated_by, record ? record.updated_by : '') + '</div>';
+}
+
+// 契約でも解約でも共通して必要な項目
+const CONTRACT_COMMON_FIELDS = {
+  property_name:{ label:'物件名', type:'text', required:true },
+  room_no:      { label:'部屋番号', type:'text', required:true },
+  contract_name:{ label:'契約者名', type:'text' },
+  contact:      { label:'連絡先', type:'text' },
+  assignee:     { label:'担当者', type:'text', suggest:'name' },
+  notes:        { label:'仲介業者・担当者', type:'textarea' },
+};
+
+// 登録区分が「契約」のときだけ入力する項目
+const CONTRACT_ONLY_FIELDS = {
+  applicant_name:{ label:'申込者名', type:'text' },
+  application_date:{ label:'申込日', type:'date' },
+  contract_date:{ label:'入居希望日', type:'date' },
+  move_in_confirmed_date:{ label:'入居確定日', type:'date' },
+  contract_execution_date:{ label:'契約締結日', type:'date' },
+  disinfection_status:{ label:'消毒施工', type:'select', options:['○','×'] },
+};
+
+// 登録区分が「解約」のときだけ入力する項目
+const CANCEL_ONLY_FIELDS = {
+  move_out_notice_date:{ label:'退去申出日', type:'date' },
+  move_out_date:{ label:'退去日（解約日）', type:'date' },
+};
+
+const CONTRACT_NEW_FIELDS = {
+  application_folder_stored:{ label:'申込書格納', type:'bool' },
+  movein_moveout_list_entered_movein:{ label:'入退去一覧入力', type:'bool' },
+  eeseikatsu_entered_movein:{ label:'いい生活入力', type:'bool' },
+  guarantor_approval_date:{ label:'保証会社審査承認日', type:'date' },
+  owner_approval_date:{ label:'オーナー承認日', type:'date' },
+  screening_result_notified:{ label:'審査結果連絡日', type:'date' },
+  heyaho_status:{ label:'へやほ加入', type:'select', options:['加入','自己手配'] },
+  mamorocca_joined:{ label:'Mamorocca新規加入', type:'bool' },
+  contract_doc_sent_date:{ label:'契約書発送日', type:'date' },
+  contract_doc_collected_date:{ label:'契約書回収日', type:'date' },
+  deposit_confirmed_date:{ label:'入金確認日', type:'date' },
+  key_arrangement_date:{ label:'鍵送付日', type:'date' },
+  key_receipt_collected_date:{ label:'鍵預り証回収日', type:'date' },
+  transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
+  ad_billing_status:{ label:'AD依頼日', type:'date' },
+  agency_fee:{ label:'業務委託料', type:'number' },
+  ad_amount:{ label:'AD額', type:'number' },
+  brokerage_fee:{ label:'仲介手数料', type:'number' },
+  ad_payment_method:{ label:'AD支払方法', type:'text' },
+  ad_payment_date:{ label:'AD支払日', type:'date' },
+};
+
+const CONTRACT_CANCEL_FIELDS = {
+  owner_notified_date:{ label:'オーナー通知日', type:'date' },
+  move_out_walkthrough_date:{ label:'立会日', type:'date' },
+  walkthrough_staff:{ label:'立会担当者', type:'text', suggest:'name' },
+  eeseikatsu_entered_moveout:{ label:'いい生活入力', type:'bool' },
+  movein_moveout_list_entered_moveout:{ label:'入退去一覧入力', type:'bool' },
+  guarantor_contacted:{ label:'保証会社連絡', type:'bool' },
+  heyaho_cancelled_date:{ label:'へやほ解約手配日', type:'date' },
+  ierabu_cancelled_date:{ label:'いえらぶ解約手配日', type:'date' },
+  settlement_sent_date:{ label:'精算書発送日', type:'date' },
+  settlement_type:{ label:'精算区分（請求/返金）', type:'select', options:['請求','返金'] },
+  settlement_payment_confirmed:{ label:'入・返金確認', type:'bool' },
+  settlement_payment_date:{ label:'精算金支払日', type:'date' },
+};
+
+const INSPECTION_FIELDS = {
+  contract_id:{ label:'対象契約', type:'contract-select', required:true },
+  inspector:{ label:'点検担当者', type:'text', suggest:'name' },
+  entered_by:{ label:'入力者', type:'text', suggest:'name' },
+  inspection_scheduled_date:{ label:'点検予定日', type:'date' },
+  key_exchange_due_date:{ label:'鍵交換期日', type:'date' },
+  ignition_test_done:{ label:'点火試験', type:'bool' },
+  inspection_completed_date:{ label:'点検完了日', type:'date' },
+  cylinder_stock:{ label:'シリンダー在庫', type:'text' },
+  power_stop_done:{ label:'電気停止手続', type:'bool' },
+  notes:{ label:'備考', type:'textarea' },
+};
+
+const RESTORATION_FIELDS = {
+  contract_id:{ label:'対象契約', type:'contract-select', required:true },
+  biruashi_no:{ label:'ビルアシNo.', type:'text' },
+  staff:{ label:'担当者', type:'text', suggest:'name' },
+  work_content:{ label:'工事内容', type:'text' },
+  move_out_received_date:{ label:'退去受付日', type:'date' },
+  order_date:{ label:'発注日', type:'date' },
+  completed_date:{ label:'完了日', type:'date' },
+  completion_confirmed_date:{ label:'完了確認日', type:'date' },
+  next_move_in_date:{ label:'次回入居日', type:'date' },
+  owner_quote_submitted_date:{ label:'(見積)オーナー提出日', type:'date' },
+  listing_start_date:{ label:'募集開始日（レインズ）', type:'date' },
+  reapplication_date:{ label:'次回申込日', type:'date' },
+  contract_signed_date:{ label:'成約日', type:'date' },
+  vendor:{ label:'業者', type:'text', suggest:'vendor' },
+  billing_method:{ label:'請求方法', type:'text' },
+  billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
+  invoice_filed:{ label:'請求書格納', type:'bool' },
+  payment_date:{ label:'入金日', type:'date' },
+  revenue:{ label:'売上（円）', type:'number' },
+  cost:{ label:'原価（円）', type:'number' },
+  tenant_burden:{ label:'退去者負担（円）', type:'number' },
+  owner_burden:{ label:'オーナー負担（円）', type:'number' },
+  agreement_doc:{ label:'約定書', type:'text' },
+  notes:{ label:'備考', type:'textarea' },
+};
+
+const WORKORDER_TYPE_FIELDS = {
+  work_type:{ label:'区分', type:'select', options:['外注','自社施工'], required:true },
+};
+// 外注・自社施工どちらでも共通の項目
+const WORKORDER_COMMON_FIELDS = {
+  property_name:{ label:'物件名', type:'text', required:true },
+  room_no:{ label:'号室', type:'text', required:true },
+  work_content:{ label:'工事内容', type:'text' },
+  inquiry_date:{ label:'入電日', type:'date' },
+  request_date:{ label:'依頼日', type:'date' },
+  order_date:{ label:'発注日', type:'date' },
+  completed_date:{ label:'完了日', type:'date' },
+  vendor:{ label:'業者', type:'text', suggest:'vendor' },
+  cost:{ label:'原価（円）', type:'number' },
+  revenue:{ label:'売上（円）', type:'number' },
+  profit_display:{ label:'利益（円）', type:'computed' },
+  notes:{ label:'備考', type:'textarea' },
+};
+// 区分が「外注」のときだけ入力する項目
+const WORKORDER_VENDOR_FIELDS = {
+  biruashi_no:{ label:'ビルアシNo.', type:'text' },
+  entered_by:{ label:'入力者', type:'text', suggest:'name' },
+  vendor_requester:{ label:'業者依頼者', type:'text', suggest:'name' },
+  vendor_orderer:{ label:'業者発注者', type:'text', suggest:'name' },
+  status:{ label:'状況', type:'text' },
+  billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
+  payment_method:{ label:'支払い方法', type:'text' },
+  payment_date:{ label:'入金日', type:'date' },
+  invoice_filed:{ label:'請求書格納', type:'bool' },
+  agreement_doc:{ label:'約定書', type:'text' },
+};
+// 区分が「自社施工」のときだけ入力する項目
+const WORKORDER_INHOUSE_FIELDS = {
+  staff:{ label:'担当者', type:'text', suggest:'name' },
+  department:{ label:'部署', type:'text' },
+  work_date:{ label:'施工日', type:'date' },
+};
+
+let contracts = [];
+let inspections = [];
+let restorations = [];
+let workOrders = [];
+let sort = { contracts: { col:'property_name', dir:1 } };
+let editing = { table:null, id:null };
+
+// ---- helpers ----
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+function daysUntil(dateStr){
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.round((d - today) / 86400000);
+}
+function daysSince(dateStr){
+  const d = daysUntil(dateStr);
+  return d === null ? null : -d;
+}
+function contractStatus(r){
+  // 解約区分は契約側の項目にフォールバックしない（未入力でも「解約手続中」を維持）
+  if (r.record_type === '解約'){
+    return r.settlement_payment_date ? '解約済' : '解約手続中';
+  }
+  if (r.ad_payment_date) return '契約完了';
+  if (blankFieldLabels(r, Object.assign({}, CONTRACT_ONLY_FIELDS, CONTRACT_NEW_FIELDS), ['ad_payment_date']).length === 0) return '契約中';
+  return '申込中';
+}
+function contractLabel(r){
+  return (r.property_name || '') + ' ' + (r.room_no || '') + (r.contract_name ? '（' + r.contract_name + '）' : '');
+}
+function fmtMoney(v){ return v != null && v !== '' ? Number(v).toLocaleString('ja-JP') + '円' : ''; }
+function fmtBool(v){ return v ? '<span class="chk">✓</span>' : '<span class="chk-no">-</span>'; }
+function setConnNote(text, isError){
+  const el = document.getElementById('conn-note');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--danger)' : 'var(--ink-soft)';
+}
+
+// 同時編集の衝突検知: フォームを開いた時点のupdated_atと、保存直前のDB上のupdated_atを比べる。
+// 開いた後に他の人が先に保存していたら、上書きしてよいか確認する。
+async function checkNotStale(table, record){
+  if (!record) return true; // 新規登録は衝突しようがない
+  const { data, error } = await sb.from(table).select('updated_at').eq('id', record.id).single();
+  if (error){
+    return confirm('最新の状態を確認できませんでした。このまま保存しますか？');
+  }
+  if (data && record.updated_at && data.updated_at !== record.updated_at){
+    return confirm('この内容を開いた後に、他の人が先に保存しています。\nあなたの内容で上書きして保存しますか？\n（キャンセルすると保存されません。最新の内容を見るには一度閉じて開き直してください）');
+  }
+  return true;
+}
+
+// ---- data ----
+async function fetchAll(){
+  const [c, i, r, w] = await Promise.all([
+    sb.from('contracts').select('*').order('property_name').order('room_no'),
+    sb.from('move_in_inspections').select('*').order('created_at', { ascending:false }),
+    sb.from('restoration_orders').select('*').order('created_at', { ascending:false }),
+    sb.from('equipment_work_orders').select('*').order('created_at', { ascending:false }),
+  ]);
+  if (c.error){ setConnNote('読み込みエラー: ' + c.error.message, true); return; }
+  contracts = c.data || [];
+  inspections = i.data || [];
+  restorations = r.data || [];
+  workOrders = w.data || [];
+  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件）');
+  renderAll();
+}
+
+const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer'];
+const VENDOR_FIELDS = ['vendor','billing_target'];
+
+function renderDatalists(){
+  const nameSet = new Set();
+  const vendorSet = new Set();
+  [contracts, inspections, restorations, workOrders].forEach(function(arr){
+    arr.forEach(function(rec){
+      NAME_FIELDS.forEach(function(f){ if (rec[f]) nameSet.add(rec[f]); });
+      VENDOR_FIELDS.forEach(function(f){ if (rec[f]) vendorSet.add(rec[f]); });
+    });
+  });
+  function optionsHtml(set){ return Array.from(set).map(function(v){ return '<option value="' + esc(v) + '">'; }).join(''); }
+  document.getElementById('datalists').innerHTML =
+    '<datalist id="dl-name">' + optionsHtml(nameSet) + '</datalist>' +
+    '<datalist id="dl-vendor">' + optionsHtml(vendorSet) + '</datalist>';
+}
+
+function renderAll(){
+  renderDatalists();
+  renderContracts();
+  renderInspections();
+  renderRestorations();
+  renderWorkOrders();
+  renderGaps();
+}
+
+// ---- tab switching ----
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    const tab = btn.getAttribute('data-tab');
+    ['contracts','inspections','restorations','workorders','gaps'].forEach(function(t){
+      document.getElementById('panel-' + t).hidden = t !== tab;
+    });
+  });
+});
+
+// =========================================================
+// ① 契約進捗（事務）
+// =========================================================
+function filteredContracts(){
+  const search = document.getElementById('search-contracts').value.trim().toLowerCase();
+  const statusFilter = document.getElementById('status-filter-contracts').value;
+  let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
+  list = list.filter(function(r){
+    const hay = [r.property_name, r.room_no, r.applicant_name, r.contract_name].join(' ').toLowerCase();
+    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter);
+  });
+  const s = sort.contracts;
+  list.sort(function(a, b){
+    const av = a[s.col], bv = b[s.col];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return av > bv ? s.dir : av < bv ? -s.dir : 0;
+  });
+  return list;
+}
+
+const CONTRACT_COLS = ['record_type','property_name','room_no','applicant_name','contract_name','contract_date','move_out_date','status','assignee'];
+const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
+const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
+
+function renderContracts(){
+  const list = filteredContracts();
+  const table = document.getElementById('table-contracts');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr>' + CONTRACT_COLS.map(function(c){
+    const label = CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label;
+    return '<th data-col="' + c + '">' + esc(label) + '</th>';
+  }).join('') + '<th>操作</th></tr>';
+
+  if (!list.length){
+    tbody.innerHTML = '<tr><td colspan="' + (CONTRACT_COLS.length + 1) + '"><div class="empty-note">該当する契約がありません</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(r){
+    const cells = CONTRACT_COLS.map(function(c){
+      if (c === 'status') return '<td><span class="status-chip status-' + r.status + '">' + esc(r.status) + '</span></td>';
+      if (c === 'record_type') return '<td><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
+      return '<td>' + esc(r[c]) + '</td>';
+    }).join('');
+    return '<tr>' + cells + '<td class="row-actions"><button data-action="edit-contract" data-id="' + r.id + '">編集</button></td></tr>';
+  }).join('');
+}
+
+document.getElementById('table-contracts').addEventListener('click', function(e){
+  const th = e.target.closest('th[data-col]');
+  if (th){
+    const col = th.getAttribute('data-col');
+    const s = sort.contracts;
+    s.dir = (s.col === col) ? -s.dir : 1;
+    s.col = col;
+    renderContracts();
+    return;
+  }
+  const btn = e.target.closest('button[data-action="edit-contract"]');
+  if (btn) openContractModal(contracts.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+});
+document.getElementById('search-contracts').addEventListener('input', renderContracts);
+document.getElementById('status-filter-contracts').addEventListener('change', renderContracts);
+document.getElementById('add-contract').addEventListener('click', function(){ openContractModal(null); });
+document.getElementById('export-contracts').addEventListener('click', function(){
+  exportCsv('契約進捗表', filteredContracts(), CONTRACT_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label; });
+});
+
+function selectHtml(key, f, val){
+  const req = f.required ? ' <span class="req">*</span>' : '';
+  return '<div class="field"><label>' + esc(f.label) + req + '</label><select data-key="' + key + '">' +
+    '<option value="">未選択</option>' +
+    f.options.map(function(o){ return '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+    '</select></div>';
+}
+
+function renderField(key, f, val){
+  if (f.type === 'bool'){
+    return '<div class="field checkbox"><input type="checkbox" id="f-' + key + '" data-key="' + key + '"' + (val ? ' checked' : '') + '><label for="f-' + key + '">' + esc(f.label) + '</label></div>';
+  }
+  if (f.type === 'select'){
+    return selectHtml(key, f, val || '');
+  }
+  if (f.type === 'textarea'){
+    return '<div class="field full"><label>' + esc(f.label) + '</label><textarea data-key="' + key + '">' + esc(val || '') + '</textarea></div>';
+  }
+  if (f.type === 'computed'){
+    return '<div class="field"><label>' + esc(f.label) + '</label><div class="field-computed" data-computed="' + key + '">—</div></div>';
+  }
+  const req = f.required ? ' <span class="req">*</span>' : '';
+  const listAttr = f.suggest ? ' list="dl-' + f.suggest + '"' : '';
+  return '<div class="field"><label>' + esc(f.label) + req + '</label><input type="' + f.type + '" data-key="' + key + '" value="' + esc(val == null ? '' : val) + '"' + listAttr + '></div>';
+}
+
+function fieldSectionHtml(fields, record){
+  return '<div class="form-grid">' + Object.keys(fields).map(function(k){ return renderField(k, fields[k], record ? record[k] : ''); }).join('') + '</div>';
+}
+
+function contractFormBodyHtml(recordType, record){
+  const basicFields = recordType === '解約'
+    ? Object.assign({}, CONTRACT_COMMON_FIELDS, CANCEL_ONLY_FIELDS)
+    : Object.assign({}, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS);
+  const checklistFieldset = recordType === '解約'
+    ? '<fieldset><legend>解約手続チェックリスト（事務）</legend>' + fieldSectionHtml(CONTRACT_CANCEL_FIELDS, record) + '</fieldset>'
+    : '<fieldset><legend>新規契約チェックリスト（事務）</legend>' + fieldSectionHtml(CONTRACT_NEW_FIELDS, record) + '</fieldset>';
+  return '<fieldset><legend>基本情報（' + esc(recordType) + '）</legend>' + fieldSectionHtml(basicFields, record) + '</fieldset>' + checklistFieldset;
+}
+
+function contractModalHtml(record){
+  const recordType = record ? record.record_type : '契約';
+  const typeSelectHtml = '<div class="field"><label>登録区分 <span class="req">*</span></label><select data-key="record_type">' +
+    CONTRACT_TYPE_FIELDS.record_type.options.map(function(o){ return '<option value="' + esc(o) + '"' + (o === recordType ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+    '</select></div>';
+  return '' +
+    '<h2>' + (record ? '編集：' + esc(contractLabel(record)) : '契約 新規登録') + '</h2>' +
+    '<div class="sub">物件名・部屋番号・契約者ごとに1行の契約データです。同じ部屋でも入居者が変われば新しい契約として登録してください。「登録区分」が契約の間は②入居前点検、解約になったら③退去原状回復にだけ表示されます。区分を変えると入力項目も切り替わります。</div>' +
+    '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + '</div></fieldset>' +
+    '<div id="contract-form-body">' + contractFormBodyHtml(recordType, record) + '</div>' +
+    (record ? relatedRecordsHtml(record.id) : '') +
+    updatedByFieldHtml(record) +
+    '<div class="form-msg" id="form-msg"></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+      (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+      '<button class="btn" id="modal-save">保存</button>' +
+    '</div>';
+}
+
+function relatedRecordsHtml(contractId){
+  const insp = inspections.filter(function(r){ return r.contract_id === contractId; });
+  const rest = restorations.filter(function(r){ return r.contract_id === contractId; });
+  function list(items, empty, fmt){
+    if (!items.length) return '<div class="empty-note">' + empty + '</div>';
+    return items.map(function(r){ return '<div class="sub-row">' + fmt(r) + '</div>'; }).join('');
+  }
+  return '<div class="sub-list"><h4>紐づく現場記録</h4>' +
+    '<div><b style="font-size:12px;">入居前点検</b>' + list(insp, '未登録', function(r){
+      return '点検完了日: ' + esc(r.inspection_completed_date || '未完了') + '（更新: ' + esc(r.updated_by || '') + '）';
+    }) + '</div>' +
+    '<div style="margin-top:8px;"><b style="font-size:12px;">退去原状回復</b>' + list(rest, '未登録', function(r){
+      return '完了日: ' + esc(r.completed_date || '未完了') + ' / 売上' + fmtMoney(r.revenue) + '（更新: ' + esc(r.updated_by || '') + '）';
+    }) + '</div></div>';
+}
+
+function openContractModal(record){
+  editing = { table:'contracts', id: record ? record.id : null };
+  document.getElementById('modal').innerHTML = contractModalHtml(record);
+  document.getElementById('modal-backdrop').hidden = false;
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', function(){ saveContract(record); });
+  const delBtn = document.getElementById('modal-delete');
+  if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('contracts', record.id); });
+  document.querySelector('#modal [data-key="record_type"]').addEventListener('change', function(e){
+    const newType = e.target.value;
+    const commonValues = {};
+    Object.keys(CONTRACT_COMMON_FIELDS).forEach(function(k){
+      const el = document.querySelector('#contract-form-body [data-key="' + k + '"]');
+      if (el) commonValues[k] = el.value;
+    });
+    const merged = Object.assign({}, record, commonValues);
+    document.getElementById('contract-form-body').innerHTML = contractFormBodyHtml(newType, merged);
+  });
+}
+
+async function saveContract(record){
+  const modal = document.getElementById('modal');
+  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
+  const payload = {};
+  let firstError = null;
+  modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
+  modal.querySelectorAll('[data-key]').forEach(function(el){
+    const key = el.getAttribute('data-key');
+    const f = allFields[key];
+    if (f.type === 'bool'){ payload[key] = el.checked; return; }
+    let val = el.value.trim();
+    if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
+    payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
+  });
+  const msg = document.getElementById('form-msg');
+  if (firstError){ msg.textContent = firstError; return; }
+  if (!(await checkNotStale('contracts', record))){ msg.textContent = '保存を中止しました。'; return; }
+
+  let error;
+  if (record){ ({ error } = await sb.from('contracts').update(payload).eq('id', record.id)); }
+  else { ({ error } = await sb.from('contracts').insert(payload)); }
+  if (error){ msg.textContent = '保存に失敗しました: ' + error.message; return; }
+  closeModal();
+  await fetchAll();
+}
+
+// =========================================================
+// contract-select helper (shared by inspections/restorations forms)
+// =========================================================
+function contractOptionsHtml(selectedId){
+  const sorted = contracts.slice().sort(function(a,b){ return contractLabel(a) > contractLabel(b) ? 1 : -1; });
+  return '<option value="">選択してください</option>' + sorted.map(function(c){
+    return '<option value="' + c.id + '"' + (c.id === selectedId ? ' selected' : '') + '>' + esc(contractLabel(c)) + '</option>';
+  }).join('');
+}
+
+// =========================================================
+// ② 入居前点検
+// =========================================================
+function latestByContract(records, contractId){
+  const recs = records.filter(function(r){ return r.contract_id === contractId; });
+  recs.sort(function(a, b){ return a.created_at < b.created_at ? 1 : -1; });
+  return recs[0] || null;
+}
+function siteStatus(record, fieldsObj, excludeKeys){
+  if (!record) return '未登録';
+  return blankFieldLabels(record, fieldsObj, excludeKeys).length === 0 ? '完了' : '進行中';
+}
+function filteredInspections(){
+  const search = document.getElementById('search-inspections').value.trim().toLowerCase();
+  return contracts
+    .filter(function(c){ return c.record_type === '契約'; })
+    .map(function(c){ return { contract:c, inspection: latestByContract(inspections, c.id) }; })
+    .filter(function(row){
+      const hay = contractLabel(row.contract).toLowerCase();
+      return !search || hay.indexOf(search) !== -1;
+    });
+}
+function renderInspections(){
+  const list = filteredInspections();
+  const table = document.getElementById('table-inspections');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr><th>対象契約</th><th>入居日</th><th>点検担当者</th><th>点検予定日</th><th>鍵交換期日</th><th>消毒施工</th><th>点火試験</th><th>点検完了日</th><th>状況</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="10"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  tbody.innerHTML = list.map(function(row){
+    const r = row.inspection;
+    const status = siteStatus(r, INSPECTION_FIELDS, ['contract_id','notes']);
+    return '<tr>' +
+      '<td>' + esc(contractLabel(row.contract)) + '</td>' +
+      '<td>' + esc(row.contract.move_in_confirmed_date) + '</td>' +
+      '<td>' + esc(r ? r.inspector : '') + '</td>' +
+      '<td>' + esc(r ? r.inspection_scheduled_date : '') + '</td>' +
+      '<td>' + esc(r ? r.key_exchange_due_date : '') + '</td>' +
+      '<td>' + esc(row.contract.disinfection_status) + '</td>' +
+      '<td>' + (r ? fmtBool(r.ignition_test_done) : '') + '</td>' +
+      '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
+      '<td><span class="status-chip status-' + status + '">' + status + '</span></td>' +
+      '<td class="row-actions"><button data-action="edit-inspection" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
+    '</tr>';
+  }).join('');
+}
+document.getElementById('table-inspections').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-action="edit-inspection"]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  if (id){
+    openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', inspections.find(function(r){ return r.id === id; }));
+  } else {
+    openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null, btn.getAttribute('data-contract-id'));
+  }
+});
+document.getElementById('search-inspections').addEventListener('input', renderInspections);
+document.getElementById('add-inspection').addEventListener('click', function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null); });
+document.getElementById('export-inspections').addEventListener('click', function(){
+  const cols = Object.keys(INSPECTION_FIELDS);
+  const rows = filteredInspections().map(function(row){ return Object.assign({}, row.inspection || {}, { contract_id: contractLabel(row.contract) }); });
+  exportCsv('入居前点検', rows, cols, function(c){ return INSPECTION_FIELDS[c].label; });
+});
+
+// =========================================================
+// ③ 退去原状回復
+// =========================================================
+function filteredRestorations(){
+  const search = document.getElementById('search-restorations').value.trim().toLowerCase();
+  return contracts
+    .filter(function(c){ return c.record_type === '解約'; })
+    .map(function(c){ return { contract:c, restoration: latestByContract(restorations, c.id) }; })
+    .filter(function(row){
+      const hay = contractLabel(row.contract).toLowerCase();
+      return !search || hay.indexOf(search) !== -1;
+    });
+}
+function renderRestorations(){
+  const list = filteredRestorations();
+  const table = document.getElementById('table-restorations');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr><th>対象契約</th><th>退去日</th><th>工事内容</th><th>発注日</th><th>完了日</th><th>業者</th><th>売上</th><th>原価</th><th>粗利</th><th>状況</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
+  tbody.innerHTML = list.map(function(row){
+    const r = row.restoration;
+    const profit = (r && r.revenue != null && r.cost != null) ? (Number(r.revenue) - Number(r.cost)) : null;
+    const status = siteStatus(r, RESTORATION_FIELDS, ['contract_id','notes']);
+    return '<tr>' +
+      '<td>' + esc(contractLabel(row.contract)) + '</td>' +
+      '<td>' + esc(row.contract.move_out_date) + '</td>' +
+      '<td>' + esc(r ? r.work_content : '') + '</td>' +
+      '<td>' + esc(r ? r.order_date : '') + '</td>' +
+      '<td>' + esc(r ? r.completed_date : '') + '</td>' +
+      '<td>' + esc(r ? r.vendor : '') + '</td>' +
+      '<td>' + (r ? fmtMoney(r.revenue) : '') + '</td>' +
+      '<td>' + (r ? fmtMoney(r.cost) : '') + '</td>' +
+      '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
+      '<td><span class="status-chip status-' + status + '">' + status + '</span></td>' +
+      '<td class="row-actions"><button data-action="edit-restoration" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
+    '</tr>';
+  }).join('');
+}
+document.getElementById('table-restorations').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-action="edit-restoration"]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  if (id){
+    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', restorations.find(function(r){ return r.id === id; }));
+  } else {
+    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', null, btn.getAttribute('data-contract-id'));
+  }
+});
+document.getElementById('search-restorations').addEventListener('input', renderRestorations);
+document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', null); });
+document.getElementById('export-restorations').addEventListener('click', function(){
+  const cols = Object.keys(RESTORATION_FIELDS);
+  const rows = filteredRestorations().map(function(row){ return Object.assign({}, row.restoration || {}, { contract_id: contractLabel(row.contract) }); });
+  exportCsv('退去原状回復', rows, cols, function(c){ return RESTORATION_FIELDS[c].label; });
+});
+
+// ---- generic record modal (inspections / restorations) ----
+function openRecordModal(table, fields, title, record, presetContractId){
+  editing = { table: table, id: record ? record.id : null };
+  const modal = document.getElementById('modal');
+  const fieldsHtml = Object.keys(fields).map(function(key){
+    const f = fields[key];
+    const val = record ? record[key] : '';
+    if (key === 'contract_id'){
+      const selectedId = record ? record.contract_id : (presetContractId || null);
+      return '<div class="field full"><label>' + esc(f.label) + ' <span class="req">*</span></label>' +
+        '<select data-key="contract_id">' + contractOptionsHtml(selectedId) + '</select></div>';
+    }
+    return renderField(key, f, val);
+  }).join('');
+
+  modal.innerHTML =
+    '<h2>' + (record ? '編集：' + title : title + ' 新規登録') + '</h2>' +
+    '<div class="sub">対象契約を選んで登録してください。</div>' +
+    '<div class="form-grid">' + fieldsHtml + '</div>' +
+    updatedByFieldHtml(record) +
+    '<div class="form-msg" id="form-msg"></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+      (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+      '<button class="btn" id="modal-save">保存</button>' +
+    '</div>';
+
+  document.getElementById('modal-backdrop').hidden = false;
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', function(){ saveRecord(table, fields, record); });
+  const delBtn = document.getElementById('modal-delete');
+  if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord(table, record.id); });
+}
+
+async function saveRecord(table, fields, record){
+  const modal = document.getElementById('modal');
+  const payload = {};
+  let firstError = null;
+  modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
+  modal.querySelectorAll('[data-key]').forEach(function(el){
+    const key = el.getAttribute('data-key');
+    const f = fields[key] || UPDATED_BY_FIELD[key];
+    if (f.type === 'bool'){ payload[key] = el.checked; return; }
+    let val = el.value.trim();
+    if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
+    payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
+  });
+  const msg = document.getElementById('form-msg');
+  if (firstError){ msg.textContent = firstError; return; }
+  if (!(await checkNotStale(table, record))){ msg.textContent = '保存を中止しました。'; return; }
+
+  let error;
+  if (record){ ({ error } = await sb.from(table).update(payload).eq('id', record.id)); }
+  else { ({ error } = await sb.from(table).insert(payload)); }
+  if (error){ msg.textContent = '保存に失敗しました: ' + error.message; return; }
+  closeModal();
+  await fetchAll();
+}
+
+async function deleteRecord(table, id){
+  if (!confirm('このレコードを削除しますか？')) return;
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error){ alert('削除に失敗しました: ' + error.message); return; }
+  closeModal();
+  await fetchAll();
+}
+
+function closeModal(){
+  document.getElementById('modal-backdrop').hidden = true;
+  document.getElementById('modal').innerHTML = '';
+  editing = { table:null, id:null };
+}
+document.getElementById('modal-backdrop').addEventListener('click', function(e){ if (e.target.id === 'modal-backdrop') closeModal(); });
+
+// =========================================================
+// ④ 設備工事・自社施工
+// =========================================================
+function workOrderFormBodyHtml(workType, record){
+  const typeFields = workType === '自社施工' ? WORKORDER_INHOUSE_FIELDS : WORKORDER_VENDOR_FIELDS;
+  const legend = workType === '自社施工' ? '自社施工の詳細' : '外注（業者）の詳細';
+  return '<fieldset><legend>' + esc(legend) + '</legend>' + fieldSectionHtml(typeFields, record) + '</fieldset>';
+}
+
+function workOrderModalHtml(record){
+  const workType = record ? record.work_type : '外注';
+  const typeSelectHtml = '<div class="field"><label>区分 <span class="req">*</span></label><select data-key="work_type">' +
+    WORKORDER_TYPE_FIELDS.work_type.options.map(function(o){ return '<option value="' + esc(o) + '"' + (o === workType ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+    '</select></div>';
+  return '' +
+    '<h2>' + (record ? '編集：設備工事・自社施工' : '設備工事・自社施工 新規登録') + '</h2>' +
+    '<div class="sub">入居中に発生した工事を1件ずつ記録します。区分を変えると入力項目も切り替わります。</div>' +
+    '<fieldset><legend>区分</legend><div class="form-grid">' + typeSelectHtml + '</div></fieldset>' +
+    '<fieldset><legend>共通項目</legend>' + fieldSectionHtml(WORKORDER_COMMON_FIELDS, record) + '</fieldset>' +
+    '<div id="workorder-form-body">' + workOrderFormBodyHtml(workType, record) + '</div>' +
+    updatedByFieldHtml(record) +
+    '<div class="form-msg" id="form-msg"></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+      (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+      '<button class="btn" id="modal-save">保存</button>' +
+    '</div>';
+}
+
+function updateWorkOrderProfitDisplay(){
+  const costEl = document.querySelector('#modal [data-key="cost"]');
+  const revenueEl = document.querySelector('#modal [data-key="revenue"]');
+  const out = document.querySelector('#modal [data-computed="profit_display"]');
+  if (!costEl || !revenueEl || !out) return;
+  const cost = parseFloat(costEl.value);
+  const revenue = parseFloat(revenueEl.value);
+  out.textContent = (isNaN(cost) || isNaN(revenue)) ? '—' : (revenue - cost).toLocaleString('ja-JP') + '円';
+}
+
+function openWorkOrderModal(record){
+  editing = { table:'equipment_work_orders', id: record ? record.id : null };
+  document.getElementById('modal').innerHTML = workOrderModalHtml(record);
+  document.getElementById('modal-backdrop').hidden = false;
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', function(){ saveWorkOrder(record); });
+  const delBtn = document.getElementById('modal-delete');
+  if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('equipment_work_orders', record.id); });
+  document.querySelector('#modal [data-key="work_type"]').addEventListener('change', function(e){
+    document.getElementById('workorder-form-body').innerHTML = workOrderFormBodyHtml(e.target.value, record);
+  });
+  ['cost','revenue'].forEach(function(key){
+    const el = document.querySelector('#modal [data-key="' + key + '"]');
+    if (el) el.addEventListener('input', updateWorkOrderProfitDisplay);
+  });
+  updateWorkOrderProfitDisplay();
+}
+
+async function saveWorkOrder(record){
+  const modal = document.getElementById('modal');
+  const allFields = Object.assign({}, WORKORDER_TYPE_FIELDS, WORKORDER_COMMON_FIELDS, WORKORDER_VENDOR_FIELDS, WORKORDER_INHOUSE_FIELDS, UPDATED_BY_FIELD);
+  const payload = {};
+  let firstError = null;
+  modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
+  modal.querySelectorAll('[data-key]').forEach(function(el){
+    const key = el.getAttribute('data-key');
+    const f = allFields[key];
+    if (f.type === 'bool'){ payload[key] = el.checked; return; }
+    let val = el.value.trim();
+    if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
+    payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
+  });
+  const msg = document.getElementById('form-msg');
+  if (firstError){ msg.textContent = firstError; return; }
+  if (!(await checkNotStale('equipment_work_orders', record))){ msg.textContent = '保存を中止しました。'; return; }
+
+  let error;
+  if (record){ ({ error } = await sb.from('equipment_work_orders').update(payload).eq('id', record.id)); }
+  else { ({ error } = await sb.from('equipment_work_orders').insert(payload)); }
+  if (error){ msg.textContent = '保存に失敗しました: ' + error.message; return; }
+  closeModal();
+  await fetchAll();
+}
+
+function filteredWorkOrders(){
+  const search = document.getElementById('search-workorders').value.trim().toLowerCase();
+  const typeFilter = document.getElementById('type-filter-workorders').value;
+  return workOrders
+    .filter(function(r){
+      const hay = ((r.property_name || '') + ' ' + (r.room_no || '') + ' ' + (r.work_content || '')).toLowerCase();
+      const matchesSearch = !search || hay.indexOf(search) !== -1;
+      const matchesType = !typeFilter || r.work_type === typeFilter;
+      return matchesSearch && matchesType;
+    })
+    .sort(function(a, b){ return (b.created_at || '') > (a.created_at || '') ? 1 : -1; });
+}
+
+function renderWorkOrders(){
+  const list = filteredWorkOrders();
+  const table = document.getElementById('table-workorders');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr><th>区分</th><th>物件名</th><th>号室</th><th>工事内容</th><th>完了日</th><th>業者/担当</th><th>売上</th><th>原価</th><th>利益</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="10"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  tbody.innerHTML = list.map(function(r){
+    const profit = (r.revenue != null && r.cost != null) ? (Number(r.revenue) - Number(r.cost)) : null;
+    const who = r.work_type === '自社施工' ? r.staff : r.vendor;
+    return '<tr>' +
+      '<td>' + esc(r.work_type) + '</td>' +
+      '<td>' + esc(r.property_name) + '</td>' +
+      '<td>' + esc(r.room_no) + '</td>' +
+      '<td>' + esc(r.work_content) + '</td>' +
+      '<td>' + esc(r.completed_date) + '</td>' +
+      '<td>' + esc(who) + '</td>' +
+      '<td>' + fmtMoney(r.revenue) + '</td>' +
+      '<td>' + fmtMoney(r.cost) + '</td>' +
+      '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
+      '<td class="row-actions"><button data-action="edit-workorder" data-id="' + r.id + '">編集</button></td>' +
+    '</tr>';
+  }).join('');
+}
+document.getElementById('table-workorders').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-action="edit-workorder"]');
+  if (btn) openWorkOrderModal(workOrders.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+});
+document.getElementById('search-workorders').addEventListener('input', renderWorkOrders);
+document.getElementById('type-filter-workorders').addEventListener('change', renderWorkOrders);
+document.getElementById('add-workorder').addEventListener('click', function(){ openWorkOrderModal(null); });
+document.getElementById('export-workorders').addEventListener('click', function(){
+  const allFields = Object.assign({}, WORKORDER_TYPE_FIELDS, WORKORDER_COMMON_FIELDS, WORKORDER_VENDOR_FIELDS, WORKORDER_INHOUSE_FIELDS, UPDATED_BY_FIELD);
+  delete allFields.profit_display;
+  const cols = Object.keys(allFields);
+  exportCsv('設備工事_自社施工', filteredWorkOrders(), cols, function(c){ return allFields[c].label; });
+});
+
+// =========================================================
+// ⑤ 漏れチェック
+// =========================================================
+function blankFieldLabels(record, fieldsObj, excludeKeys){
+  return Object.keys(fieldsObj).filter(function(k){
+    if (excludeKeys.indexOf(k) !== -1) return false;
+    const f = fieldsObj[k];
+    if (f.type === 'bool' || f.type === 'computed') return false;
+    const v = record[k];
+    return v == null || v === '';
+  }).map(function(k){ return fieldsObj[k].label; });
+}
+
+function computeGaps(){
+  const items = [];
+
+  contracts.forEach(function(c){
+    const label = contractLabel(c);
+    const tag = c.record_type;
+    const insp = inspections.filter(function(r){ return r.contract_id === c.id; });
+    const rest = restorations.filter(function(r){ return r.contract_id === c.id; });
+
+    // 事務⇄現場の食い違いチェック
+    if (tag === '解約'){
+      if (c.settlement_sent_date && !rest.length){
+        items.push({ tag:tag, label:label, text: '精算書は発送済みだが、退去原状回復の記録が未登録', open: function(){ openContractModal(c); } });
+      }
+      if (!rest.length && c.move_out_date && (daysSince(c.move_out_date) || 0) >= 14){
+        items.push({ tag:tag, label:label, text: '退去日から' + daysSince(c.move_out_date) + '日経過しているが、退去原状回復が未登録', open: function(){ openContractModal(c); } });
+      }
+      rest.forEach(function(r){
+        if (r.completed_date && !c.settlement_sent_date){
+          items.push({ tag:tag, label:label, text: '原状回復工事は完了しているが、精算書がまだ発送されていない', open: function(){ openContractModal(c); } });
+        }
+      });
+    }
+    if (tag === '契約'){
+      if (c.move_in_confirmed_date && !insp.length){
+        items.push({ tag:tag, label:label, text: '入居確定日が入っているが、入居前点検の記録が未登録', open: function(){ openContractModal(c); } });
+      }
+      if (c.key_receipt_collected_date && !insp.length){
+        items.push({ tag:tag, label:label, text: '鍵預り証は回収済みだが、入居前点検（鍵交換）の記録が未登録', open: function(){ openContractModal(c); } });
+      }
+    }
+
+    // 未入力項目チェック（区分に応じた項目のみ）
+    const contractFields = Object.assign({}, CONTRACT_COMMON_FIELDS, tag === '解約' ? CANCEL_ONLY_FIELDS : CONTRACT_ONLY_FIELDS, tag === '解約' ? CONTRACT_CANCEL_FIELDS : CONTRACT_NEW_FIELDS);
+    const contractBlanks = blankFieldLabels(c, contractFields, ['notes']);
+    if (contractBlanks.length){
+      items.push({ tag:tag, label:label, text: '未入力項目: ' + contractBlanks.join('、'), open: function(){ openContractModal(c); } });
+    }
+    insp.forEach(function(r){
+      const b = blankFieldLabels(r, INSPECTION_FIELDS, ['notes','contract_id']);
+      if (b.length){
+        items.push({ tag:'契約', label:label, text: '入居前点検の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', r); } });
+      }
+    });
+    rest.forEach(function(r){
+      const b = blankFieldLabels(r, RESTORATION_FIELDS, ['notes','contract_id']);
+      if (b.length){
+        items.push({ tag:'解約', label:label, text: '退去原状回復の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', r); } });
+      }
+    });
+  });
+
+  workOrders.forEach(function(r){
+    const typeFields = r.work_type === '自社施工' ? WORKORDER_INHOUSE_FIELDS : WORKORDER_VENDOR_FIELDS;
+    const fields = Object.assign({}, WORKORDER_COMMON_FIELDS, typeFields);
+    const b = blankFieldLabels(r, fields, ['notes','profit_display']);
+    if (b.length){
+      items.push({ tag:'設備', label:(r.property_name || '') + ' ' + (r.room_no || ''), text: '未入力項目: ' + b.join('、'), open: function(){ openWorkOrderModal(r); } });
+    }
+  });
+
+  return items;
+}
+
+let gapItems = [];
+let gapSort = { col:'tag', dir:1 };
+
+function renderGaps(){
+  const all = computeGaps();
+  const countEl = document.getElementById('gap-count');
+  if (all.length){ countEl.hidden = false; countEl.textContent = all.length; }
+  else { countEl.hidden = true; }
+
+  const tagSelect = document.getElementById('tag-filter-gaps');
+  const currentTag = tagSelect.value;
+  const tags = Array.from(new Set(all.map(function(it){ return it.tag; })));
+  tagSelect.innerHTML = '<option value="">タグ: すべて</option>' + tags.map(function(t){
+    return '<option value="' + esc(t) + '"' + (t === currentTag ? ' selected' : '') + '>' + esc(t) + '</option>';
+  }).join('');
+
+  let list = currentTag ? all.filter(function(it){ return it.tag === currentTag; }) : all;
+  list = list.slice().sort(function(a, b){
+    const av = a[gapSort.col], bv = b[gapSort.col];
+    return av > bv ? gapSort.dir : av < bv ? -gapSort.dir : 0;
+  });
+  gapItems = list;
+
+  const table = document.getElementById('table-gaps');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr><th data-col="tag">タグ</th><th data-col="label">対象</th><th>内容</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="4"><div class="empty-note">現在、抜け漏れの可能性がある項目はありません</div></td></tr>'; return; }
+  tbody.innerHTML = list.map(function(it, idx){
+    return '<tr>' +
+      '<td><span class="status-chip status-' + esc(it.tag) + '">' + esc(it.tag) + '</span></td>' +
+      '<td>' + esc(it.label) + '</td>' +
+      '<td>' + esc(it.text) + '</td>' +
+      '<td class="row-actions"><button data-action="open-gap" data-idx="' + idx + '">開く</button></td>' +
+    '</tr>';
+  }).join('');
+}
+document.getElementById('tag-filter-gaps').addEventListener('change', renderGaps);
+document.getElementById('table-gaps').addEventListener('click', function(e){
+  const th = e.target.closest('th[data-col]');
+  if (th){
+    const col = th.getAttribute('data-col');
+    gapSort.dir = (gapSort.col === col) ? -gapSort.dir : 1;
+    gapSort.col = col;
+    renderGaps();
+    return;
+  }
+  const btn = e.target.closest('button[data-action="open-gap"]');
+  if (btn){
+    const item = gapItems[Number(btn.getAttribute('data-idx'))];
+    if (item) item.open();
+  }
+});
+
+// ---- CSV export ----
+function exportCsv(name, list, cols, labelFn){
+  const header = cols.map(labelFn);
+  const rows = list.map(function(r){
+    return cols.map(function(c){
+      let v = r[c];
+      if (typeof v === 'boolean') v = v ? '済' : '未';
+      return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    });
+  });
+  const csv = [header.join(',')].concat(rows.map(function(r){ return r.join(','); })).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---- realtime ----
+sb.channel('contracts-app-changes')
+  .on('postgres_changes', { event:'*', schema:'public', table:'contracts' }, function(){ fetchAll(); })
+  .on('postgres_changes', { event:'*', schema:'public', table:'move_in_inspections' }, function(){ fetchAll(); })
+  .on('postgres_changes', { event:'*', schema:'public', table:'restoration_orders' }, function(){ fetchAll(); })
+  .on('postgres_changes', { event:'*', schema:'public', table:'equipment_work_orders' }, function(){ fetchAll(); })
+  .subscribe();
+
+fetchAll();
+</script>
+</body>
+</html>
