@@ -189,6 +189,11 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   <section class="panel" id="panel-contracts">
     <div class="toolbar">
       <input type="text" id="search-contracts" placeholder="物件名・部屋番号・氏名で検索">
+      <select id="type-filter-contracts">
+        <option value="">区分: すべて</option>
+        <option value="契約">契約</option>
+        <option value="解約">解約</option>
+      </select>
       <select id="status-filter-contracts">
         <option value="">ステータス: すべて</option>
         <option value="申込中">申込中</option>
@@ -563,10 +568,11 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
 function filteredContracts(){
   const search = document.getElementById('search-contracts').value.trim().toLowerCase();
   const statusFilter = document.getElementById('status-filter-contracts').value;
+  const typeFilter = document.getElementById('type-filter-contracts').value;
   let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
   list = list.filter(function(r){
     const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name].join(' ').toLowerCase();
-    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter);
+    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter);
   });
   const s = sort.contracts;
   list.sort(function(a, b){
@@ -621,6 +627,7 @@ document.getElementById('table-contracts').addEventListener('click', function(e)
 });
 document.getElementById('search-contracts').addEventListener('input', renderContracts);
 document.getElementById('status-filter-contracts').addEventListener('change', renderContracts);
+document.getElementById('type-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('add-contract').addEventListener('click', function(){ openContractModal(null); });
 document.getElementById('export-contracts').addEventListener('click', function(){
   exportCsv('契約進捗表', filteredContracts(), CONTRACT_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label; });
