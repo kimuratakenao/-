@@ -526,19 +526,31 @@ const RESTORATION_FIELDS = {
   notes:{ label:'備考', type:'textarea' },
 };
 
-const POWER_FIELDS = {
+const POWER_CONTRACT_FIELD = {
   contract_id:{ label:'対象物件', type:'contract-select', required:true },
-  power_on_staff:{ label:'通電担当者', type:'text', suggest:'name' },
+};
+// 新規ツール（入居・通電開始）
+const POWER_NEW_FIELDS = {
   move_in_confirmed_display:{ label:'入居日', type:'computed' },
+  power_on_staff:{ label:'通電担当者', type:'text', suggest:'name' },
   power_on_request_date:{ label:'通電依頼日', type:'date' },
   water_heater_request_date:{ label:'電気温水器通電依頼日', type:'date' },
   power_on_date:{ label:'通電開始日', type:'date' },
-  power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
+  power_on_web_application_no:{ label:'WEB申込番号', type:'text' },
+};
+// 退去ツール（退去立会・通電停止）
+const POWER_MOVEOUT_FIELDS = {
   move_out_walkthrough_display:{ label:'退去立会日', type:'computed' },
+  power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
   power_off_request_date:{ label:'通電停止依頼日', type:'date' },
   power_off_date:{ label:'通電停止日', type:'date' },
+  power_off_web_application_no:{ label:'WEB申込番号', type:'text' },
+};
+const POWER_NOTES_FIELD = {
   notes:{ label:'備考', type:'textarea' },
 };
+const POWER_FIELDS = Object.assign({}, POWER_CONTRACT_FIELD, POWER_NEW_FIELDS, POWER_MOVEOUT_FIELDS, POWER_NOTES_FIELD);
+function powerContractLabel(r){ return (r.property_name || '') + ' ' + (r.room_no || ''); }
 
 const WORKORDER_TYPE_FIELDS = {
   work_type:{ label:'区分', type:'select', options:['オーナー物件','自社物件'], required:true },
@@ -1131,10 +1143,11 @@ async function saveParking(record){
 // =========================================================
 // contract-select helper (shared by inspections/restorations forms)
 // =========================================================
-function contractOptionsHtml(selectedId){
-  const sorted = contracts.slice().sort(function(a,b){ return contractLabel(a) > contractLabel(b) ? 1 : -1; });
+function contractOptionsHtml(selectedId, labelFn){
+  labelFn = labelFn || contractLabel;
+  const sorted = contracts.slice().sort(function(a,b){ return labelFn(a) > labelFn(b) ? 1 : -1; });
   return '<option value="">選択してください</option>' + sorted.map(function(c){
-    return '<option value="' + c.id + '"' + (c.id === selectedId ? ' selected' : '') + '>' + esc(contractLabel(c)) + '</option>';
+    return '<option value="' + c.id + '"' + (c.id === selectedId ? ' selected' : '') + '>' + esc(labelFn(c)) + '</option>';
   }).join('');
 }
 
@@ -1429,9 +1442,10 @@ function filteredPower(){
   const search = document.getElementById('search-power').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-power').value;
   return contracts
+    .filter(function(c){ return c.record_type === '契約' || (c.record_type === '解約' && c.move_out_walkthrough_date); })
     .map(function(c){ return { contract:c, power: latestByContract(powerRecords, c.id) }; })
     .filter(function(row){
-      const hay = contractLabel(row.contract).toLowerCase();
+      const hay = powerContractLabel(row.contract).toLowerCase();
       return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.power && row.power.is_closed);
     });
 }
@@ -1444,7 +1458,7 @@ function renderPower(){
   tbody.innerHTML = list.map(function(row){
     const r = row.power;
     return '<tr>' +
-      '<td>' + esc(contractLabel(row.contract)) + '</td>' +
+      '<td>' + esc(powerContractLabel(row.contract)) + '</td>' +
       '<td>' + esc(r ? r.power_on_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_on_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_request_date : '') + '</td>' +
@@ -1458,19 +1472,60 @@ document.getElementById('table-power').addEventListener('click', function(e){
   if (!btn) return;
   const id = btn.getAttribute('data-id');
   if (id){
-    openRecordModal('power_supply_records', POWER_FIELDS, '通電一覧', powerRecords.find(function(r){ return r.id === id; }));
+    openPowerModal(powerRecords.find(function(r){ return r.id === id; }));
   } else {
-    openRecordModal('power_supply_records', POWER_FIELDS, '通電一覧', null, btn.getAttribute('data-contract-id'));
+    openPowerModal(null, btn.getAttribute('data-contract-id'));
   }
 });
 document.getElementById('search-power').addEventListener('input', renderPower);
 document.getElementById('closed-filter-power').addEventListener('change', renderPower);
-document.getElementById('add-power').addEventListener('click', function(){ openRecordModal('power_supply_records', POWER_FIELDS, '通電一覧', null); });
+document.getElementById('add-power').addEventListener('click', function(){ openPowerModal(null); });
 document.getElementById('export-power').addEventListener('click', function(){
   const cols = Object.keys(POWER_FIELDS);
-  const rows = filteredPower().map(function(row){ return Object.assign({}, row.power || {}, { contract_id: contractLabel(row.contract) }); });
+  const rows = filteredPower().map(function(row){ return Object.assign({}, row.power || {}, { contract_id: powerContractLabel(row.contract) }); });
   exportCsv('通電一覧', rows, cols, function(c){ return POWER_FIELDS[c].label; });
 });
+
+function powerModalHtml(record){
+  const selectedId = record ? record.contract_id : null;
+  const contractFieldHtml = '<div class="field"><label>対象物件 <span class="req">*</span></label>' +
+    '<select data-key="contract_id">' + contractOptionsHtml(selectedId, powerContractLabel) + '</select></div>';
+  return '' +
+    '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
+    '<div class="sub">対象契約を選んで登録してください。</div>' +
+    '<div class="form-grid">' + contractFieldHtml + '</div>' +
+    '<fieldset><legend>新規ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
+    '<fieldset><legend>退去ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
+    '<div class="form-grid">' + renderField('notes', POWER_NOTES_FIELD.notes, record ? record.notes : '') + '</div>' +
+    updatedByFieldHtml(record) +
+    '<div class="form-msg" id="form-msg"></div>' +
+    '<div class="modal-actions">' +
+      '<div class="modal-actions-left">' +
+        '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+        (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+        closeButtonHtml(record) +
+      '</div>' +
+      '<button class="btn save" id="modal-save">保存</button>' +
+    '</div>';
+}
+
+function openPowerModal(record, presetContractId){
+  editing = { table:'power_supply_records', id: record ? record.id : null };
+  document.getElementById('modal').innerHTML = powerModalHtml(record);
+  document.getElementById('modal-backdrop').hidden = false;
+  if (!record && presetContractId){
+    document.querySelector('#modal [data-key="contract_id"]').value = presetContractId;
+  }
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', function(){ saveRecord('power_supply_records', POWER_FIELDS, record); });
+  const delBtn = document.getElementById('modal-delete');
+  if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('power_supply_records', record.id); });
+  const closeBtn = document.getElementById('modal-toggle-closed');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('power_supply_records', record); });
+  const contractSelect = document.querySelector('#modal [data-key="contract_id"]');
+  contractSelect.addEventListener('change', updateContractLinkedDisplays);
+  updateContractLinkedDisplays();
+}
 
 // =========================================================
 // ④ 設備工事・自社施工
