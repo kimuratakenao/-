@@ -101,7 +101,7 @@ tbody tr:hover{background:var(--surface-2);}
 tbody tr.row-highlight{background:var(--orange-soft);}
 .status-chip{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap;}
 .status-申込中,.status-未着手,.status-未登録{background:var(--surface-2); color:var(--ink-soft);}
-.status-契約中,.status-工事中,.status-進行中,.status-解約手続中{background:var(--orange-soft); color:var(--orange-ink);}
+.status-契約中,.status-工事中,.status-進行中,.status-解約手続中,.status-契約締結{background:var(--orange-soft); color:var(--orange-ink);}
 .status-解約済,.status-完了,.status-登録済,.status-契約完了{background:var(--ok-soft); color:var(--ok);}
 .status-未対象{background:var(--surface-2); color:var(--ink-soft);}
 .status-契約{background:var(--navy-soft); color:var(--navy-ink);}
@@ -192,6 +192,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
       <select id="status-filter-contracts">
         <option value="">ステータス: すべて</option>
         <option value="申込中">申込中</option>
+        <option value="契約締結">契約締結</option>
         <option value="契約中">契約中</option>
         <option value="契約完了">契約完了</option>
         <option value="解約手続中">解約手続中</option>
@@ -365,9 +366,12 @@ const CONTRACT_CANCEL_FIELDS = {
 const INSPECTION_FIELDS = {
   contract_id:{ label:'対象物件', type:'contract-select', required:true },
   inspector:{ label:'点検担当者', type:'text', suggest:'name' },
+  move_in_scheduled_display:{ label:'入居予定日', type:'computed' },
+  move_in_confirmed_display:{ label:'入居確定日', type:'computed' },
   inspection_scheduled_date:{ label:'点検予定日', type:'date' },
   key_exchange_due_date:{ label:'鍵交換期日', type:'date' },
   ignition_test_done:{ label:'点火試験', type:'select', options:['○','×'] },
+  disinfection_display:{ label:'消毒施工', type:'computed' },
   inspection_completed_date:{ label:'点検完了日', type:'date' },
   cylinder_stock:{ label:'シリンダー在庫', type:'select', options:['○','×'] },
   power_stop_done:{ label:'電気停止手続', type:'bool' },
@@ -469,6 +473,7 @@ function contractStatus(r){
   }
   if (r.ad_payment_date) return '契約完了';
   if (blankFieldLabels(r, Object.assign({}, CONTRACT_ONLY_FIELDS, CONTRACT_NEW_FIELDS), ['ad_payment_date','notes']).length === 0) return '契約中';
+  if (r.deposit_confirmed_date) return '契約締結';
   return '申込中';
 }
 function contractLabel(r){
@@ -910,7 +915,7 @@ function openRecordModal(table, fields, title, record, presetContractId){
     const val = record ? record[key] : '';
     if (key === 'contract_id'){
       const selectedId = record ? record.contract_id : (presetContractId || null);
-      return '<div class="field full"><label>' + esc(f.label) + ' <span class="req">*</span></label>' +
+      return '<div class="field"><label>' + esc(f.label) + ' <span class="req">*</span></label>' +
         '<select data-key="contract_id">' + contractOptionsHtml(selectedId) + '</select></div>';
     }
     return renderField(key, f, val);
@@ -933,6 +938,27 @@ function openRecordModal(table, fields, title, record, presetContractId){
   document.getElementById('modal-save').addEventListener('click', function(){ saveRecord(table, fields, record); });
   const delBtn = document.getElementById('modal-delete');
   if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord(table, record.id); });
+  const contractSelect = document.querySelector('#modal [data-key="contract_id"]');
+  if (contractSelect){
+    contractSelect.addEventListener('change', updateContractLinkedDisplays);
+    updateContractLinkedDisplays();
+  }
+}
+
+// 対象物件（契約）の選択に応じて、①側の情報を読み取り専用で表示する（②の入居予定日・入居確定日・消毒施工など）
+function updateContractLinkedDisplays(){
+  const select = document.querySelector('#modal [data-key="contract_id"]');
+  if (!select) return;
+  const c = contracts.find(function(x){ return x.id === select.value; });
+  const map = {
+    move_in_scheduled_display: c ? c.contract_date : null,
+    move_in_confirmed_display: c ? c.move_in_confirmed_date : null,
+    disinfection_display: c ? c.disinfection_status : null,
+  };
+  Object.keys(map).forEach(function(key){
+    const out = document.querySelector('#modal [data-computed="' + key + '"]');
+    if (out) out.textContent = map[key] || '—';
+  });
 }
 
 async function saveRecord(table, fields, record){
@@ -973,7 +999,15 @@ function closeModal(){
   document.getElementById('modal').innerHTML = '';
   editing = { table:null, id:null };
 }
-document.getElementById('modal-backdrop').addEventListener('click', function(e){ if (e.target.id === 'modal-backdrop') closeModal(); });
+document.getElementById('modal-backdrop').addEventListener('click', function(e){
+  if (e.target.id !== 'modal-backdrop') return;
+  if (confirm('入力中の内容を保存しますか？\n（キャンセルすると入力内容は破棄されます）')){
+    const saveBtn = document.getElementById('modal-save');
+    if (saveBtn) saveBtn.click();
+  } else {
+    closeModal();
+  }
+});
 
 // =========================================================
 // ④ 設備工事・自社施工
