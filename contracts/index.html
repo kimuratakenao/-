@@ -204,6 +204,11 @@ tbody tr.row-highlight{background:var(--orange-soft);}
         <option value="解約手続中">解約手続中</option>
         <option value="解約済">解約済</option>
       </select>
+      <select id="closed-filter-contracts">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
+      </select>
       <div class="spacer"></div>
       <button class="btn secondary" id="export-contracts">CSV出力</button>
       <button class="btn" id="add-contract">＋ 新規登録</button>
@@ -215,6 +220,11 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <div class="note-box">入居前点検・鍵交換の記録です。契約を選んで登録します。1契約に複数件登録することもできます。</div>
     <div class="toolbar">
       <input type="text" id="search-inspections" placeholder="物件名・部屋番号で検索">
+      <select id="closed-filter-inspections">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
+      </select>
       <div class="spacer"></div>
       <button class="btn secondary" id="export-inspections">CSV出力</button>
       <button class="btn" id="add-inspection">＋ 新規登録</button>
@@ -226,6 +236,11 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <div class="note-box">退去後の原状回復工事の記録です（売上・原価・粗利を含む）。契約を選んで登録します。</div>
     <div class="toolbar">
       <input type="text" id="search-restorations" placeholder="物件名・部屋番号で検索">
+      <select id="closed-filter-restorations">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
+      </select>
       <div class="spacer"></div>
       <button class="btn secondary" id="export-restorations">CSV出力</button>
       <button class="btn" id="add-restoration">＋ 新規登録</button>
@@ -241,6 +256,11 @@ tbody tr.row-highlight{background:var(--orange-soft);}
         <option value="">区分: すべて</option>
         <option value="外注">外注</option>
         <option value="自社施工">自社施工</option>
+      </select>
+      <select id="closed-filter-workorders">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
       <button class="btn secondary" id="export-workorders">CSV出力</button>
@@ -559,14 +579,22 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
 // =========================================================
 // ① 契約進捗（事務）
 // =========================================================
+// 未クローズ/クローズ済/すべて の絞り込み判定
+function matchesClosedFilter(filterValue, isClosed){
+  if (filterValue === 'closed') return !!isClosed;
+  if (filterValue === 'all') return true;
+  return !isClosed;
+}
+
 function filteredContracts(){
   const search = document.getElementById('search-contracts').value.trim().toLowerCase();
   const statusFilter = document.getElementById('status-filter-contracts').value;
   const typeFilter = document.getElementById('type-filter-contracts').value;
+  const closedFilter = document.getElementById('closed-filter-contracts').value;
   let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
   list = list.filter(function(r){
     const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name].join(' ').toLowerCase();
-    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter);
+    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
   });
   const s = sort.contracts;
   list.sort(function(a, b){
@@ -622,6 +650,7 @@ document.getElementById('table-contracts').addEventListener('click', function(e)
 document.getElementById('search-contracts').addEventListener('input', renderContracts);
 document.getElementById('status-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('type-filter-contracts').addEventListener('change', renderContracts);
+document.getElementById('closed-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('add-contract').addEventListener('click', function(){ openContractModal(null); });
 document.getElementById('export-contracts').addEventListener('click', function(){
   exportCsv('契約進捗表', filteredContracts(), CONTRACT_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label; });
@@ -685,6 +714,7 @@ function contractModalHtml(record){
     '<div class="modal-actions">' +
       '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
       (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+      closeButtonHtml(record) +
       '<button class="btn" id="modal-save">保存</button>' +
     '</div>';
 }
@@ -737,6 +767,8 @@ function openContractModal(record){
   document.getElementById('modal-save').addEventListener('click', function(){ saveContract(record); });
   const delBtn = document.getElementById('modal-delete');
   if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('contracts', record.id); });
+  const closeBtn = document.getElementById('modal-toggle-closed');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('contracts', record); });
   wireContractFormBodyEvents(record ? record.record_type : '契約');
   document.querySelector('#modal [data-key="record_type"]').addEventListener('change', function(e){
     const newType = e.target.value;
@@ -801,12 +833,13 @@ function siteStatus(record, fieldsObj, excludeKeys){
 }
 function filteredInspections(){
   const search = document.getElementById('search-inspections').value.trim().toLowerCase();
+  const closedFilter = document.getElementById('closed-filter-inspections').value;
   return contracts
     .filter(function(c){ return c.record_type === '契約' && (c.contract_date || c.move_in_confirmed_date); })
     .map(function(c){ return { contract:c, inspection: latestByContract(inspections, c.id) }; })
     .filter(function(row){
       const hay = contractLabel(row.contract).toLowerCase();
-      return !search || hay.indexOf(search) !== -1;
+      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.inspection && row.inspection.is_closed);
     });
 }
 function renderInspections(){
@@ -844,6 +877,7 @@ document.getElementById('table-inspections').addEventListener('click', function(
   }
 });
 document.getElementById('search-inspections').addEventListener('input', renderInspections);
+document.getElementById('closed-filter-inspections').addEventListener('change', renderInspections);
 document.getElementById('add-inspection').addEventListener('click', function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null); });
 document.getElementById('export-inspections').addEventListener('click', function(){
   const cols = Object.keys(INSPECTION_FIELDS);
@@ -856,12 +890,13 @@ document.getElementById('export-inspections').addEventListener('click', function
 // =========================================================
 function filteredRestorations(){
   const search = document.getElementById('search-restorations').value.trim().toLowerCase();
+  const closedFilter = document.getElementById('closed-filter-restorations').value;
   return contracts
     .filter(function(c){ return c.record_type === '解約' && c.move_out_date; })
     .map(function(c){ return { contract:c, restoration: latestByContract(restorations, c.id) }; })
     .filter(function(row){
       const hay = contractLabel(row.contract).toLowerCase();
-      return !search || hay.indexOf(search) !== -1;
+      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.restoration && row.restoration.is_closed);
     });
 }
 function renderRestorations(){
@@ -900,6 +935,7 @@ document.getElementById('table-restorations').addEventListener('click', function
   }
 });
 document.getElementById('search-restorations').addEventListener('input', renderRestorations);
+document.getElementById('closed-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null); });
 document.getElementById('export-restorations').addEventListener('click', function(){
   const cols = Object.keys(RESTORATION_FIELDS);
@@ -931,6 +967,7 @@ function openRecordModal(table, fields, title, record, presetContractId){
     '<div class="modal-actions">' +
       '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
       (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+      closeButtonHtml(record) +
       '<button class="btn" id="modal-save">保存</button>' +
     '</div>';
 
@@ -939,6 +976,8 @@ function openRecordModal(table, fields, title, record, presetContractId){
   document.getElementById('modal-save').addEventListener('click', function(){ saveRecord(table, fields, record); });
   const delBtn = document.getElementById('modal-delete');
   if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord(table, record.id); });
+  const closeBtn = document.getElementById('modal-toggle-closed');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed(table, record); });
   const contractSelect = document.querySelector('#modal [data-key="contract_id"]');
   if (contractSelect){
     contractSelect.addEventListener('change', updateContractLinkedDisplays);
@@ -1017,6 +1056,23 @@ async function deleteRecord(table, id){
   await fetchAll();
 }
 
+// 完全に終了した案件を一覧から隠す（削除はしない）。クローズ済フィルタでいつでも検索できる。
+async function toggleClosed(table, record){
+  const newValue = !record.is_closed;
+  const label = newValue ? 'クローズ' : '再オープン';
+  if (!confirm('この内容を' + label + 'しますか？')) return;
+  const { error } = await sb.from(table).update({ is_closed: newValue }).eq('id', record.id);
+  if (error){ alert('操作に失敗しました: ' + error.message); return; }
+  closeModal();
+  await fetchAll();
+}
+
+function closeButtonHtml(record){
+  if (!record) return '';
+  const label = record.is_closed ? '再オープン' : 'クローズ';
+  return '<button class="btn secondary" id="modal-toggle-closed">' + esc(label) + '</button>';
+}
+
 function closeModal(){
   document.getElementById('modal-backdrop').hidden = true;
   document.getElementById('modal').innerHTML = '';
@@ -1056,6 +1112,7 @@ function workOrderModalHtml(record){
     '<div class="modal-actions">' +
       '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
       (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+      closeButtonHtml(record) +
       '<button class="btn" id="modal-save">保存</button>' +
     '</div>';
 }
@@ -1078,6 +1135,8 @@ function openWorkOrderModal(record){
   document.getElementById('modal-save').addEventListener('click', function(){ saveWorkOrder(record); });
   const delBtn = document.getElementById('modal-delete');
   if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('equipment_work_orders', record.id); });
+  const closeBtn = document.getElementById('modal-toggle-closed');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('equipment_work_orders', record); });
   document.querySelector('#modal [data-key="work_type"]').addEventListener('change', function(e){
     document.getElementById('workorder-form-body').innerHTML = workOrderFormBodyHtml(e.target.value, record);
   });
@@ -1117,12 +1176,13 @@ async function saveWorkOrder(record){
 function filteredWorkOrders(){
   const search = document.getElementById('search-workorders').value.trim().toLowerCase();
   const typeFilter = document.getElementById('type-filter-workorders').value;
+  const closedFilter = document.getElementById('closed-filter-workorders').value;
   return workOrders
     .filter(function(r){
       const hay = ((r.property_name || '') + ' ' + (r.room_no || '') + ' ' + (r.work_content || '')).toLowerCase();
       const matchesSearch = !search || hay.indexOf(search) !== -1;
       const matchesType = !typeFilter || r.work_type === typeFilter;
-      return matchesSearch && matchesType;
+      return matchesSearch && matchesType && matchesClosedFilter(closedFilter, r.is_closed);
     })
     .sort(function(a, b){ return (b.created_at || '') > (a.created_at || '') ? 1 : -1; });
 }
@@ -1156,6 +1216,7 @@ document.getElementById('table-workorders').addEventListener('click', function(e
 });
 document.getElementById('search-workorders').addEventListener('input', renderWorkOrders);
 document.getElementById('type-filter-workorders').addEventListener('change', renderWorkOrders);
+document.getElementById('closed-filter-workorders').addEventListener('change', renderWorkOrders);
 document.getElementById('add-workorder').addEventListener('click', function(){ openWorkOrderModal(null); });
 document.getElementById('export-workorders').addEventListener('click', function(){
   const allFields = Object.assign({}, WORKORDER_TYPE_FIELDS, WORKORDER_COMMON_FIELDS, WORKORDER_VENDOR_FIELDS, WORKORDER_INHOUSE_FIELDS, UPDATED_BY_FIELD);
