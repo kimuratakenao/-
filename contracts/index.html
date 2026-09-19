@@ -373,8 +373,8 @@ const PARKING_COMMON_FIELDS = {
 const PARKING_ONLY_FIELDS = {
   notes:{ label:'備考', type:'textarea' },
   application_date:{ label:'申込日', type:'date' },
-  contract_start_date:{ label:'契約開始日', type:'date' },
   contract_execution_date:{ label:'契約締結日', type:'date' },
+  contract_start_date:{ label:'契約開始日', type:'date' },
 };
 
 // 駐車場：新規契約チェックリスト（①のCONTRACT_NEW_FIELDSからへやほ・Mamorocca・契約書発送日・鍵関連・AD関係を除いたもの）
@@ -391,6 +391,22 @@ const PARKING_NEW_FIELDS = {
   brokerage_fee:{ label:'仲介手数料', type:'number' },
   transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
   contract_checklist_notes:{ label:'備考', type:'textarea' },
+};
+
+// 駐車場：解約手続チェックリスト（①のCONTRACT_CANCEL_FIELDSから保険会社名・保険会社手続日・いえらぶ解約手配日を除いたもの）
+const PARKING_CANCEL_FIELDS = {
+  tenant_confirmation_date:{ label:'契約者へ連絡日', type:'date' },
+  owner_notified_date:{ label:'オーナー通知日', type:'date' },
+  move_out_walkthrough_date:{ label:'退去立会日', type:'date' },
+  walkthrough_staff:{ label:'立会担当者', type:'text', suggest:'name' },
+  guarantor_name:{ label:'保証会社名', type:'text', suggest:'vendor' },
+  guarantor_procedure_date:{ label:'保証会社手続日', type:'date' },
+  eeseikatsu_entered_moveout:{ label:'いい生活入力', type:'bool' },
+  movein_moveout_list_entered_moveout:{ label:'入退去一覧入力', type:'bool' },
+  settlement_type:{ label:'精算区分（請求/返金）', type:'select', options:['請求','返金'] },
+  settlement_sent_date:{ label:'精算書発送日', type:'date' },
+  settlement_payment_confirmed:{ label:'精算書格納', type:'bool' },
+  settlement_payment_date:{ label:'精算金支払日', type:'date' },
 };
 
 // 登録区分が「契約」のときだけ入力する項目
@@ -971,7 +987,7 @@ function parkingFormBodyHtml(recordType, record){
     ? Object.assign({}, PARKING_COMMON_FIELDS, CANCEL_ONLY_FIELDS)
     : Object.assign({}, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS);
   const checklistFieldset = recordType === '解約'
-    ? '<fieldset><legend>解約手続チェックリスト</legend>' + fieldSectionHtml(CONTRACT_CANCEL_FIELDS, record) + '</fieldset>'
+    ? '<fieldset><legend>解約手続チェックリスト</legend>' + fieldSectionHtml(PARKING_CANCEL_FIELDS, record) + '</fieldset>'
     : '<fieldset><legend>新規契約チェックリスト</legend>' + fieldSectionHtml(PARKING_NEW_FIELDS, record) + '</fieldset>';
   return '<fieldset><legend>基本情報（' + esc(recordType) + '）</legend>' + fieldSectionHtml(basicFields, record) + '</fieldset>' + checklistFieldset;
 }
@@ -1049,7 +1065,7 @@ function openParkingModal(record){
 
 async function saveParking(record){
   const modal = document.getElementById('modal');
-  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, CANCEL_ONLY_FIELDS, PARKING_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
+  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, CANCEL_ONLY_FIELDS, PARKING_NEW_FIELDS, PARKING_CANCEL_FIELDS, UPDATED_BY_FIELD);
   const payload = {};
   let firstError = null;
   modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
