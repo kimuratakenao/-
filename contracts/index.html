@@ -190,6 +190,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <button class="tab-btn" data-tab="restorations">③ 退去・原状回復工事</button>
     <button class="tab-btn" data-tab="workorders">④ 設備工事</button>
     <button class="tab-btn" data-tab="gaps">⑤ 漏れチェック <span class="count" id="gap-count" hidden>0</span></button>
+    <button class="tab-btn" data-tab="parking">⑥ 駐車場</button>
   </div>
 
   <section class="panel" id="panel-contracts">
@@ -285,6 +286,34 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <div class="table-scroll"><table id="table-gaps"><thead></thead><tbody></tbody></table></div>
   </section>
 
+  <section class="panel" id="panel-parking" hidden>
+    <div class="toolbar">
+      <input type="text" id="search-parking" placeholder="物件名・部屋番号・氏名で検索">
+      <select id="type-filter-parking">
+        <option value="">区分: すべて</option>
+        <option value="契約">契約</option>
+        <option value="解約">解約</option>
+      </select>
+      <select id="status-filter-parking">
+        <option value="">ステータス: すべて</option>
+        <option value="申込・審査中">申込・審査中</option>
+        <option value="契約手続中">契約手続中</option>
+        <option value="引渡済">引渡済</option>
+        <option value="解約手続中">解約手続中</option>
+        <option value="解約済">解約済</option>
+      </select>
+      <select id="closed-filter-parking">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-parking">CSV出力</button>
+      <button class="btn" id="add-parking">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-parking"><thead></thead><tbody></tbody></table></div>
+  </section>
+
   <div class="foot">全ユーザーの更新はリアルタイムで反映されます。</div>
 </div>
 
@@ -330,6 +359,14 @@ const CONTRACT_COMMON_FIELDS = {
   contact:      { label:'連絡先', type:'text' },
   resident_name:{ label:'入居者名', type:'text' },
   resident_contact:{ label:'連絡先', type:'text' },
+};
+
+// 駐車場：①と同じ内容だが、入居者名・連絡先（入居者）は不要
+const PARKING_COMMON_FIELDS = {
+  property_name:{ label:'物件名', type:'text', required:true },
+  room_no:      { label:'部屋番号', type:'text', required:true },
+  contract_name:{ label:'契約者名', type:'text' },
+  contact:      { label:'連絡先', type:'text' },
 };
 
 // 登録区分が「契約」のときだけ入力する項目
@@ -473,7 +510,8 @@ let contracts = [];
 let inspections = [];
 let restorations = [];
 let workOrders = [];
-let sort = { contracts: { col:'property_name', dir:1 } };
+let parkingContracts = [];
+let sort = { contracts: { col:'property_name', dir:1 }, parking: { col:'property_name', dir:1 } };
 let editing = { table:null, id:null };
 
 // ---- helpers ----
@@ -527,18 +565,20 @@ async function checkNotStale(table, record){
 
 // ---- data ----
 async function fetchAll(){
-  const [c, i, r, w] = await Promise.all([
+  const [c, i, r, w, p] = await Promise.all([
     sb.from('contracts').select('*').order('property_name').order('room_no'),
     sb.from('move_in_inspections').select('*').order('created_at', { ascending:false }),
     sb.from('restoration_orders').select('*').order('created_at', { ascending:false }),
     sb.from('equipment_work_orders').select('*').order('created_at', { ascending:false }),
+    sb.from('parking_contracts').select('*').order('property_name').order('room_no'),
   ]);
   if (c.error){ setConnNote('読み込みエラー: ' + c.error.message, true); return; }
   contracts = c.data || [];
   inspections = i.data || [];
   restorations = r.data || [];
   workOrders = w.data || [];
-  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件）');
+  parkingContracts = p.data || [];
+  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件 / 駐車場' + parkingContracts.length + '件）');
   renderAll();
 }
 
@@ -548,7 +588,7 @@ const VENDOR_FIELDS = ['vendor','billing_target'];
 function renderDatalists(){
   const nameSet = new Set();
   const vendorSet = new Set();
-  [contracts, inspections, restorations, workOrders].forEach(function(arr){
+  [contracts, inspections, restorations, workOrders, parkingContracts].forEach(function(arr){
     arr.forEach(function(rec){
       NAME_FIELDS.forEach(function(f){ if (rec[f]) nameSet.add(rec[f]); });
       VENDOR_FIELDS.forEach(function(f){ if (rec[f]) vendorSet.add(rec[f]); });
@@ -567,6 +607,7 @@ function renderAll(){
   renderRestorations();
   renderWorkOrders();
   renderGaps();
+  renderParking();
 }
 
 // ---- tab switching ----
@@ -575,7 +616,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     const tab = btn.getAttribute('data-tab');
-    ['contracts','inspections','restorations','workorders','gaps'].forEach(function(t){
+    ['contracts','inspections','restorations','workorders','gaps','parking'].forEach(function(t){
       document.getElementById('panel-' + t).hidden = t !== tab;
     });
   });
@@ -811,6 +852,185 @@ async function saveContract(record){
   let error;
   if (record){ ({ error } = await sb.from('contracts').update(payload).eq('id', record.id)); }
   else { ({ error } = await sb.from('contracts').insert(payload)); }
+  if (error){ msg.textContent = '保存に失敗しました: ' + error.message; return; }
+  closeModal();
+  await fetchAll();
+}
+
+// =========================================================
+// ⑥ 駐車場（①と同じ内容だが、入居者名・連絡先（入居者）は不要）
+// =========================================================
+const PARKING_COLS = ['record_type','property_name','room_no','contract_name','contract_date','move_in_confirmed_date','move_out_date','status','assignee'];
+const ALL_PARKING_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
+
+function filteredParking(){
+  const search = document.getElementById('search-parking').value.trim().toLowerCase();
+  const statusFilter = document.getElementById('status-filter-parking').value;
+  const typeFilter = document.getElementById('type-filter-parking').value;
+  const closedFilter = document.getElementById('closed-filter-parking').value;
+  let list = parkingContracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
+  list = list.filter(function(r){
+    const hay = [r.property_name, r.room_no, r.contract_name].join(' ').toLowerCase();
+    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
+  });
+  const s = sort.parking;
+  list.sort(function(a, b){
+    const av = a[s.col], bv = b[s.col];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return av > bv ? s.dir : av < bv ? -s.dir : 0;
+  });
+  return list;
+}
+
+function renderParking(){
+  const list = filteredParking();
+  const table = document.getElementById('table-parking');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr>' + PARKING_COLS.map(function(c){
+    const label = CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label;
+    return '<th data-col="' + c + '">' + esc(label) + '</th>';
+  }).join('') + '<th>操作</th></tr>';
+
+  if (!list.length){
+    tbody.innerHTML = '<tr><td colspan="' + (PARKING_COLS.length + 1) + '"><div class="empty-note">該当する駐車場契約がありません</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(r){
+    const cells = PARKING_COLS.map(function(c){
+      if (c === 'status') return '<td><span class="status-chip status-' + r.status + '">' + esc(r.status) + '</span></td>';
+      if (c === 'record_type') return '<td><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
+      return '<td>' + esc(r[c]) + '</td>';
+    }).join('');
+    return '<tr>' + cells + '<td class="row-actions"><button data-action="edit-parking" data-id="' + r.id + '">編集</button></td></tr>';
+  }).join('');
+}
+
+document.getElementById('table-parking').addEventListener('click', function(e){
+  const th = e.target.closest('th[data-col]');
+  if (th){
+    const col = th.getAttribute('data-col');
+    const s = sort.parking;
+    s.dir = (s.col === col) ? -s.dir : 1;
+    s.col = col;
+    renderParking();
+    return;
+  }
+  const btn = e.target.closest('button[data-action="edit-parking"]');
+  if (btn) openParkingModal(parkingContracts.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+});
+document.getElementById('search-parking').addEventListener('input', renderParking);
+document.getElementById('status-filter-parking').addEventListener('change', renderParking);
+document.getElementById('type-filter-parking').addEventListener('change', renderParking);
+document.getElementById('closed-filter-parking').addEventListener('change', renderParking);
+document.getElementById('add-parking').addEventListener('click', function(){ openParkingModal(null); });
+document.getElementById('export-parking').addEventListener('click', function(){
+  exportCsv('駐車場', filteredParking(), PARKING_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label; });
+});
+
+function parkingFormBodyHtml(recordType, record){
+  const basicFields = recordType === '解約'
+    ? Object.assign({}, PARKING_COMMON_FIELDS, CANCEL_ONLY_FIELDS)
+    : Object.assign({}, PARKING_COMMON_FIELDS, CONTRACT_ONLY_FIELDS);
+  const checklistFieldset = recordType === '解約'
+    ? '<fieldset><legend>解約手続チェックリスト</legend>' + fieldSectionHtml(CONTRACT_CANCEL_FIELDS, record) + '</fieldset>'
+    : '<fieldset><legend>新規契約チェックリスト</legend>' + fieldSectionHtml(CONTRACT_NEW_FIELDS, record) + '</fieldset>';
+  return '<fieldset><legend>基本情報（' + esc(recordType) + '）</legend>' + fieldSectionHtml(basicFields, record) + '</fieldset>' + checklistFieldset;
+}
+
+function parkingModalHtml(record){
+  const recordType = record ? record.record_type : '契約';
+  const typeSelectHtml = '<div class="field"><label>登録区分 <span class="req">*</span></label><select data-key="record_type">' +
+    CONTRACT_TYPE_FIELDS.record_type.options.map(function(o){ return '<option value="' + esc(o) + '"' + (o === recordType ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+    '</select></div>';
+  const assigneeFieldHtml = renderField('assignee', ASSIGNEE_FIELD.assignee, record ? record.assignee : '');
+  return '' +
+    '<h2>' + (record ? '編集：' + esc(contractLabel(record)) : '駐車場 新規登録') + '</h2>' +
+    '<div class="sub">物件名・部屋番号・契約者ごとに1行の駐車場契約データです。区分を変えると入力項目も切り替わります。</div>' +
+    '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + assigneeFieldHtml + '</div></fieldset>' +
+    '<div id="parking-form-body">' + parkingFormBodyHtml(recordType, record) + '</div>' +
+    updatedByFieldHtml(record) +
+    '<div class="form-msg" id="form-msg"></div>' +
+    '<div class="modal-actions">' +
+      '<div class="modal-actions-left">' +
+        '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+        (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+        closeButtonHtml(record) +
+      '</div>' +
+      '<button class="btn save" id="modal-save">保存</button>' +
+    '</div>';
+}
+
+function updateParkingTenancyDaysDisplay(){
+  const startEl = document.querySelector('#parking-form-body [data-key="original_contract_start_date"]');
+  const endEl = document.querySelector('#parking-form-body [data-key="move_out_date"]');
+  const out = document.querySelector('#parking-form-body [data-computed="tenancy_days_display"]');
+  if (!startEl || !endEl || !out) return;
+  if (!startEl.value || !endEl.value){ out.textContent = '—'; return; }
+  const start = new Date(startEl.value + 'T00:00:00');
+  const end = new Date(endEl.value + 'T00:00:00');
+  const days = Math.round((end - start) / 86400000);
+  if (isNaN(days)){ out.textContent = '—'; return; }
+  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (end.getDate() < start.getDate()) months--;
+  out.textContent = months + 'ヶ月（' + days + '日）';
+}
+
+function wireParkingFormBodyEvents(recordType){
+  if (recordType !== '解約') return;
+  ['original_contract_start_date','move_out_date'].forEach(function(key){
+    const el = document.querySelector('#parking-form-body [data-key="' + key + '"]');
+    if (el) el.addEventListener('input', updateParkingTenancyDaysDisplay);
+  });
+  updateParkingTenancyDaysDisplay();
+}
+
+function openParkingModal(record){
+  editing = { table:'parking_contracts', id: record ? record.id : null };
+  document.getElementById('modal').innerHTML = parkingModalHtml(record);
+  document.getElementById('modal-backdrop').hidden = false;
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', function(){ saveParking(record); });
+  const delBtn = document.getElementById('modal-delete');
+  if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('parking_contracts', record.id); });
+  const closeBtn = document.getElementById('modal-toggle-closed');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('parking_contracts', record); });
+  wireParkingFormBodyEvents(record ? record.record_type : '契約');
+  document.querySelector('#modal [data-key="record_type"]').addEventListener('change', function(e){
+    const newType = e.target.value;
+    const commonValues = {};
+    Object.keys(PARKING_COMMON_FIELDS).forEach(function(k){
+      const el = document.querySelector('#parking-form-body [data-key="' + k + '"]');
+      if (el) commonValues[k] = el.value;
+    });
+    const merged = Object.assign({}, record, commonValues);
+    document.getElementById('parking-form-body').innerHTML = parkingFormBodyHtml(newType, merged);
+    wireParkingFormBodyEvents(newType);
+  });
+}
+
+async function saveParking(record){
+  const modal = document.getElementById('modal');
+  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
+  const payload = {};
+  let firstError = null;
+  modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
+  modal.querySelectorAll('[data-key]').forEach(function(el){
+    const key = el.getAttribute('data-key');
+    const f = allFields[key];
+    if (f.type === 'bool'){ payload[key] = el.checked; return; }
+    let val = el.value.trim();
+    if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
+    payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
+  });
+  const msg = document.getElementById('form-msg');
+  if (firstError){ msg.textContent = firstError; return; }
+  if (!(await checkNotStale('parking_contracts', record))){ msg.textContent = '保存を中止しました。'; return; }
+
+  let error;
+  if (record){ ({ error } = await sb.from('parking_contracts').update(payload).eq('id', record.id)); }
+  else { ({ error } = await sb.from('parking_contracts').insert(payload)); }
   if (error){ msg.textContent = '保存に失敗しました: ' + error.message; return; }
   closeModal();
   await fetchAll();
@@ -1419,6 +1639,7 @@ sb.channel('contracts-app-changes')
   .on('postgres_changes', { event:'*', schema:'public', table:'move_in_inspections' }, function(){ fetchAll(); })
   .on('postgres_changes', { event:'*', schema:'public', table:'restoration_orders' }, function(){ fetchAll(); })
   .on('postgres_changes', { event:'*', schema:'public', table:'equipment_work_orders' }, function(){ fetchAll(); })
+  .on('postgres_changes', { event:'*', schema:'public', table:'parking_contracts' }, function(){ fetchAll(); })
   .subscribe();
 
 fetchAll();
