@@ -1492,7 +1492,7 @@ document.getElementById('export-power').addEventListener('click', function(){
 function powerModalHtml(record){
   const selectedId = record ? record.contract_id : null;
   const contractFieldHtml = '<div class="field"><label>対象物件 <span class="req">*</span></label>' +
-    '<select data-key="contract_id">' + contractOptionsHtml(selectedId, powerContractLabel) + '</select></div>' +
+    '<select data-key="contract_id">' + contractOptionsHtml(selectedId, function(r){ return r.property_name || ''; }) + '</select></div>' +
     renderField('room_no_display', POWER_CONTRACT_FIELD.room_no_display, null);
   return '' +
     '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
