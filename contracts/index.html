@@ -100,9 +100,9 @@ tbody td{padding:7px 10px; border:1px solid var(--border); white-space:nowrap;}
 tbody tr:hover{background:var(--surface-2);}
 tbody tr.row-highlight{background:var(--orange-soft);}
 .status-chip{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap;}
-.status-申込中,.status-未着手,.status-未登録{background:var(--surface-2); color:var(--ink-soft);}
-.status-契約中,.status-工事中,.status-進行中,.status-解約手続中,.status-契約締結{background:var(--orange-soft); color:var(--orange-ink);}
-.status-解約済,.status-完了,.status-登録済,.status-契約完了{background:var(--ok-soft); color:var(--ok);}
+.status-申込中,.status-未着手,.status-未登録,.status-申込・審査中{background:var(--surface-2); color:var(--ink-soft);}
+.status-契約中,.status-工事中,.status-進行中,.status-解約手続中,.status-契約締結,.status-契約手続中{background:var(--orange-soft); color:var(--orange-ink);}
+.status-解約済,.status-完了,.status-登録済,.status-契約完了,.status-引渡済{background:var(--ok-soft); color:var(--ok);}
 .status-未対象{background:var(--surface-2); color:var(--ink-soft);}
 .status-契約{background:var(--navy-soft); color:var(--navy-ink);}
 .status-解約{background:var(--danger-soft); color:var(--danger);}
@@ -196,10 +196,9 @@ tbody tr.row-highlight{background:var(--orange-soft);}
       </select>
       <select id="status-filter-contracts">
         <option value="">ステータス: すべて</option>
-        <option value="申込中">申込中</option>
-        <option value="契約締結">契約締結</option>
-        <option value="契約中">契約中</option>
-        <option value="契約完了">契約完了</option>
+        <option value="申込・審査中">申込・審査中</option>
+        <option value="契約手続中">契約手続中</option>
+        <option value="引渡済">引渡済</option>
         <option value="解約手続中">解約手続中</option>
         <option value="解約済">解約済</option>
       </select>
@@ -472,14 +471,12 @@ function daysSince(dateStr){
   return d === null ? null : -d;
 }
 function contractStatus(r){
-  // 解約区分は契約側の項目にフォールバックしない（未入力でも「解約手続中」を維持）
   if (r.record_type === '解約'){
     return r.settlement_payment_date ? '解約済' : '解約手続中';
   }
-  if (r.ad_payment_date) return '契約完了';
-  if (blankFieldLabels(r, Object.assign({}, CONTRACT_ONLY_FIELDS, CONTRACT_NEW_FIELDS), ['ad_payment_date','notes']).length === 0) return '契約中';
-  if (r.deposit_confirmed_date) return '契約締結';
-  return '申込中';
+  if (r.key_arrangement_date) return '引渡済';
+  if (r.owner_approval_date) return '契約手続中';
+  return '申込・審査中';
 }
 function contractLabel(r){
   return (r.property_name || '') + ' ' + (r.room_no || '') + (r.contract_name ? '（' + r.contract_name + '）' : '');
