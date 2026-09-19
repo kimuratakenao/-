@@ -178,8 +178,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   <header class="top">
     <div>
       <div class="brand">契約進捗・入退去管理アプリ</div>
-      <div class="tagline">事務（契約・解約）と現場（点検・原状回復）を1つの契約データにまとめ、抜け漏れを検知します</div>
-      <div class="phase-note">※ 通電一覧はまだ未実装です。それ以外（契約・解約・入居前点検・退去・原状回復工事・設備工事・自社施工）はここに集約されています。</div>
+      <div class="tagline">事務（契約・解約）と現場（点検・原状回復・通電）を1つの契約データにまとめ、抜け漏れを検知します</div>
     </div>
     <div class="conn-note" id="conn-note"></div>
   </header>
@@ -191,6 +190,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <button class="tab-btn" data-tab="workorders">④ 設備工事</button>
     <button class="tab-btn" data-tab="gaps">⑤ 漏れチェック <span class="count" id="gap-count" hidden>0</span></button>
     <button class="tab-btn" data-tab="parking">⑥ 駐車場</button>
+    <button class="tab-btn" data-tab="power">⑦ 通電一覧</button>
   </div>
 
   <section class="panel" id="panel-contracts">
@@ -314,6 +314,22 @@ tbody tr.row-highlight{background:var(--orange-soft);}
       <button class="btn" id="add-parking">＋ 新規登録</button>
     </div>
     <div class="table-scroll"><table id="table-parking"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-power" hidden>
+    <div class="note-box">契約に紐づく通電・停止の記録です。契約を選んで登録します。1契約に複数件登録することもできます。</div>
+    <div class="toolbar">
+      <input type="text" id="search-power" placeholder="物件名・部屋番号で検索">
+      <select id="closed-filter-power">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-power">CSV出力</button>
+      <button class="btn" id="add-power">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-power"><thead></thead><tbody></tbody></table></div>
   </section>
 
   <div class="foot">全ユーザーの更新はリアルタイムで反映されます。</div>
@@ -510,6 +526,20 @@ const RESTORATION_FIELDS = {
   notes:{ label:'備考', type:'textarea' },
 };
 
+const POWER_FIELDS = {
+  contract_id:{ label:'対象物件', type:'contract-select', required:true },
+  power_on_staff:{ label:'通電担当者', type:'text', suggest:'name' },
+  move_in_confirmed_display:{ label:'入居日', type:'computed' },
+  power_on_request_date:{ label:'通電依頼日', type:'date' },
+  water_heater_request_date:{ label:'電気温水器通電依頼日', type:'date' },
+  power_on_date:{ label:'通電開始日', type:'date' },
+  power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
+  move_out_walkthrough_display:{ label:'退去立会日', type:'computed' },
+  power_off_request_date:{ label:'通電停止依頼日', type:'date' },
+  power_off_date:{ label:'通電停止日', type:'date' },
+  notes:{ label:'備考', type:'textarea' },
+};
+
 const WORKORDER_TYPE_FIELDS = {
   work_type:{ label:'区分', type:'select', options:['オーナー物件','自社物件'], required:true },
 };
@@ -552,6 +582,7 @@ let inspections = [];
 let restorations = [];
 let workOrders = [];
 let parkingContracts = [];
+let powerRecords = [];
 let sort = { contracts: { col:'property_name', dir:1 }, parking: { col:'property_name', dir:1 } };
 let editing = { table:null, id:null };
 
@@ -606,12 +637,13 @@ async function checkNotStale(table, record){
 
 // ---- data ----
 async function fetchAll(){
-  const [c, i, r, w, p] = await Promise.all([
+  const [c, i, r, w, p, pw] = await Promise.all([
     sb.from('contracts').select('*').order('property_name').order('room_no'),
     sb.from('move_in_inspections').select('*').order('created_at', { ascending:false }),
     sb.from('restoration_orders').select('*').order('created_at', { ascending:false }),
     sb.from('equipment_work_orders').select('*').order('created_at', { ascending:false }),
     sb.from('parking_contracts').select('*').order('property_name').order('room_no'),
+    sb.from('power_supply_records').select('*').order('created_at', { ascending:false }),
   ]);
   if (c.error){ setConnNote('読み込みエラー: ' + c.error.message, true); return; }
   contracts = c.data || [];
@@ -619,17 +651,18 @@ async function fetchAll(){
   restorations = r.data || [];
   workOrders = w.data || [];
   parkingContracts = p.data || [];
-  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件 / 駐車場' + parkingContracts.length + '件）');
+  powerRecords = pw.data || [];
+  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件 / 駐車場' + parkingContracts.length + '件 / 通電' + powerRecords.length + '件）');
   renderAll();
 }
 
-const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer'];
+const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer','power_on_staff','power_off_staff'];
 const VENDOR_FIELDS = ['vendor','billing_target'];
 
 function renderDatalists(){
   const nameSet = new Set();
   const vendorSet = new Set();
-  [contracts, inspections, restorations, workOrders, parkingContracts].forEach(function(arr){
+  [contracts, inspections, restorations, workOrders, parkingContracts, powerRecords].forEach(function(arr){
     arr.forEach(function(rec){
       NAME_FIELDS.forEach(function(f){ if (rec[f]) nameSet.add(rec[f]); });
       VENDOR_FIELDS.forEach(function(f){ if (rec[f]) vendorSet.add(rec[f]); });
@@ -649,6 +682,7 @@ function renderAll(){
   renderWorkOrders();
   renderGaps();
   renderParking();
+  renderPower();
 }
 
 // ---- tab switching ----
@@ -657,7 +691,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     const tab = btn.getAttribute('data-tab');
-    ['contracts','inspections','restorations','workorders','gaps','parking'].forEach(function(t){
+    ['contracts','inspections','restorations','workorders','gaps','parking','power'].forEach(function(t){
       document.getElementById('panel-' + t).hidden = t !== tab;
     });
   });
@@ -814,6 +848,7 @@ function contractModalHtml(record){
 function relatedRecordsHtml(contractId){
   const insp = inspections.filter(function(r){ return r.contract_id === contractId; });
   const rest = restorations.filter(function(r){ return r.contract_id === contractId; });
+  const pow = powerRecords.filter(function(r){ return r.contract_id === contractId; });
   function list(items, empty, fmt){
     if (!items.length) return '<div class="empty-note">' + empty + '</div>';
     return items.map(function(r){ return '<div class="sub-row">' + fmt(r) + '</div>'; }).join('');
@@ -824,6 +859,9 @@ function relatedRecordsHtml(contractId){
     }) + '</div>' +
     '<div style="margin-top:8px;"><b style="font-size:12px;">退去・原状回復工事</b>' + list(rest, '未登録', function(r){
       return '完了日: ' + esc(r.completed_date || '未完了') + ' / 売上' + fmtMoney(r.revenue) + '（更新: ' + esc(r.updated_by || '') + '）';
+    }) + '</div>' +
+    '<div style="margin-top:8px;"><b style="font-size:12px;">通電一覧</b>' + list(pow, '未登録', function(r){
+      return '通電開始日: ' + esc(r.power_on_date || '未完了') + ' / 通電停止日: ' + esc(r.power_off_date || '未完了') + '（更新: ' + esc(r.updated_by || '') + '）';
     }) + '</div></div>';
 }
 
@@ -1297,6 +1335,7 @@ function updateContractLinkedDisplays(){
     disinfection_display: c ? c.disinfection_status : null,
     move_out_received_display: c ? c.move_out_notice_date : null,
     move_out_date_display: c ? c.move_out_date : null,
+    move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
@@ -1381,6 +1420,56 @@ document.getElementById('modal-backdrop').addEventListener('click', function(e){
     if (saveBtn) saveBtn.click();
   }
   // 「戻る」を選んだ場合は何もせず、入力画面のまま維持する
+});
+
+// =========================================================
+// ⑦ 通電一覧（①の契約に紐づく通電・停止記録）
+// =========================================================
+function filteredPower(){
+  const search = document.getElementById('search-power').value.trim().toLowerCase();
+  const closedFilter = document.getElementById('closed-filter-power').value;
+  return contracts
+    .map(function(c){ return { contract:c, power: latestByContract(powerRecords, c.id) }; })
+    .filter(function(row){
+      const hay = contractLabel(row.contract).toLowerCase();
+      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.power && row.power.is_closed);
+    });
+}
+function renderPower(){
+  const list = filteredPower();
+  const table = document.getElementById('table-power');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr><th>対象物件</th><th>通電依頼日</th><th>通電開始日</th><th>通電停止依頼日</th><th>通電停止日</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="6"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  tbody.innerHTML = list.map(function(row){
+    const r = row.power;
+    return '<tr>' +
+      '<td>' + esc(contractLabel(row.contract)) + '</td>' +
+      '<td>' + esc(r ? r.power_on_request_date : '') + '</td>' +
+      '<td>' + esc(r ? r.power_on_date : '') + '</td>' +
+      '<td>' + esc(r ? r.power_off_request_date : '') + '</td>' +
+      '<td>' + esc(r ? r.power_off_date : '') + '</td>' +
+      '<td class="row-actions"><button data-action="edit-power" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
+    '</tr>';
+  }).join('');
+}
+document.getElementById('table-power').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-action="edit-power"]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  if (id){
+    openRecordModal('power_supply_records', POWER_FIELDS, '通電一覧', powerRecords.find(function(r){ return r.id === id; }));
+  } else {
+    openRecordModal('power_supply_records', POWER_FIELDS, '通電一覧', null, btn.getAttribute('data-contract-id'));
+  }
+});
+document.getElementById('search-power').addEventListener('input', renderPower);
+document.getElementById('closed-filter-power').addEventListener('change', renderPower);
+document.getElementById('add-power').addEventListener('click', function(){ openRecordModal('power_supply_records', POWER_FIELDS, '通電一覧', null); });
+document.getElementById('export-power').addEventListener('click', function(){
+  const cols = Object.keys(POWER_FIELDS);
+  const rows = filteredPower().map(function(row){ return Object.assign({}, row.power || {}, { contract_id: contractLabel(row.contract) }); });
+  exportCsv('通電一覧', rows, cols, function(c){ return POWER_FIELDS[c].label; });
 });
 
 // =========================================================
@@ -1698,6 +1787,7 @@ sb.channel('contracts-app-changes')
   .on('postgres_changes', { event:'*', schema:'public', table:'restoration_orders' }, function(){ fetchAll(); })
   .on('postgres_changes', { event:'*', schema:'public', table:'equipment_work_orders' }, function(){ fetchAll(); })
   .on('postgres_changes', { event:'*', schema:'public', table:'parking_contracts' }, function(){ fetchAll(); })
+  .on('postgres_changes', { event:'*', schema:'public', table:'power_supply_records' }, function(){ fetchAll(); })
   .subscribe();
 
 fetchAll();
