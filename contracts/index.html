@@ -1215,24 +1215,36 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>区分</th><th>物件名</th><th>号室</th><th>工事内容</th><th>完了日</th><th>業者/担当</th><th>売上</th><th>原価</th><th>利益</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="10"><div class="empty-note">登録がありません</div></td></tr>'; return; }
-  tbody.innerHTML = list.map(function(r){
+  thead.innerHTML = '<tr><th>区分</th><th>対象物件</th><th>工事内容</th><th>業者名</th><th>発注日</th><th>完了日</th><th>売上</th><th>原価</th><th>利益</th><th>担当者</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  let totalRevenue = 0, totalCost = 0, totalProfit = 0;
+  const rowsHtml = list.map(function(r){
     const profit = (r.revenue != null && r.cost != null) ? (Number(r.revenue) - Number(r.cost)) : null;
-    const who = r.work_type === '自社施工' ? r.staff : r.vendor;
+    if (r.revenue != null) totalRevenue += Number(r.revenue);
+    if (r.cost != null) totalCost += Number(r.cost);
+    if (profit != null) totalProfit += profit;
     return '<tr>' +
       '<td>' + esc(r.work_type) + '</td>' +
-      '<td>' + esc(r.property_name) + '</td>' +
-      '<td>' + esc(r.room_no) + '</td>' +
+      '<td>' + esc(r.property_name) + ' ' + esc(r.room_no) + '</td>' +
       '<td>' + esc(r.work_content) + '</td>' +
+      '<td>' + esc(r.work_type === '自社施工' ? '' : r.vendor) + '</td>' +
+      '<td>' + esc(r.order_date) + '</td>' +
       '<td>' + esc(r.completed_date) + '</td>' +
-      '<td>' + esc(who) + '</td>' +
       '<td>' + fmtMoney(r.revenue) + '</td>' +
       '<td>' + fmtMoney(r.cost) + '</td>' +
       '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
+      '<td>' + esc(r.work_type === '自社施工' ? r.staff : '') + '</td>' +
       '<td class="row-actions"><button data-action="edit-workorder" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
+  const totalRow = '<tr class="total-row">' +
+    '<td colspan="6">合計金額</td>' +
+    '<td>' + fmtMoney(totalRevenue) + '</td>' +
+    '<td>' + fmtMoney(totalCost) + '</td>' +
+    '<td>' + fmtMoney(totalProfit) + '</td>' +
+    '<td></td><td></td>' +
+  '</tr>';
+  tbody.innerHTML = rowsHtml + totalRow;
 }
 document.getElementById('table-workorders').addEventListener('click', function(e){
   const btn = e.target.closest('button[data-action="edit-workorder"]');
