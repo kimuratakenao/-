@@ -150,7 +150,11 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .field.checkbox{display:flex; align-items:center; gap:8px; flex-direction:row; padding-top:22px;}
 .field.checkbox input{width:16px; height:16px;}
 .field.checkbox label{margin:0;}
-.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+.modal-actions{display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:18px;}
+.modal-actions-left{display:flex; gap:10px; flex-wrap:wrap;}
+.btn.save{padding:14px 36px; font-size:16px; background:#1f8a4c; border-color:#1f8a4c;}
+.total-row{font-weight:700; background:var(--navy-soft);}
+.total-row td{border-top:2px solid var(--navy);}
 .field-error{border-color:var(--danger) !important;}
 .form-msg{font-size:12.5px; color:var(--danger); margin-top:10px; min-height:1em;}
 
@@ -236,6 +240,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <div class="note-box">退去後の原状回復工事の記録です（売上・原価・粗利を含む）。契約を選んで登録します。</div>
     <div class="toolbar">
       <input type="text" id="search-restorations" placeholder="物件名・部屋番号で検索">
+      <input type="month" id="month-filter-restorations" title="退去日検索（月）">
       <select id="closed-filter-restorations">
         <option value="open">未クローズ</option>
         <option value="closed">クローズ済</option>
@@ -712,10 +717,12 @@ function contractModalHtml(record){
     updatedByFieldHtml(record) +
     '<div class="form-msg" id="form-msg"></div>' +
     '<div class="modal-actions">' +
-      '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
-      (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
-      closeButtonHtml(record) +
-      '<button class="btn" id="modal-save">保存</button>' +
+      '<div class="modal-actions-left">' +
+        '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+        (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+        closeButtonHtml(record) +
+      '</div>' +
+      '<button class="btn save" id="modal-save">保存</button>' +
     '</div>';
 }
 
@@ -846,11 +853,10 @@ function renderInspections(){
   const list = filteredInspections();
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>対象物件</th><th>点検担当者</th><th>入居予定日</th><th>入居確定日</th><th>点検予定日</th><th>鍵交換期日</th><th>点火試験</th><th>消毒施工</th><th>点検完了日</th><th>状況</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th>対象物件</th><th>点検担当者</th><th>入居予定日</th><th>入居確定日</th><th>点検予定日</th><th>鍵交換期日</th><th>点火試験</th><th>消毒施工</th><th>点検完了日</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="10"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
-    const status = siteStatus(r, INSPECTION_FIELDS, ['contract_id','notes']);
     return '<tr>' +
       '<td>' + esc(contractLabel(row.contract)) + '</td>' +
       '<td>' + esc(r ? r.inspector : '') + '</td>' +
@@ -861,7 +867,6 @@ function renderInspections(){
       '<td>' + esc(r ? r.ignition_test_done : '') + '</td>' +
       '<td>' + esc(row.contract.disinfection_status) + '</td>' +
       '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
-      '<td><span class="status-chip status-' + status + '">' + status + '</span></td>' +
       '<td class="row-actions"><button data-action="edit-inspection" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
@@ -891,38 +896,52 @@ document.getElementById('export-inspections').addEventListener('click', function
 function filteredRestorations(){
   const search = document.getElementById('search-restorations').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-restorations').value;
+  const monthFilter = document.getElementById('month-filter-restorations').value;
   return contracts
     .filter(function(c){ return c.record_type === '解約' && c.move_out_date; })
     .map(function(c){ return { contract:c, restoration: latestByContract(restorations, c.id) }; })
     .filter(function(row){
       const hay = contractLabel(row.contract).toLowerCase();
-      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.restoration && row.restoration.is_closed);
+      const matchesMonth = !monthFilter || (row.contract.move_out_date && row.contract.move_out_date.slice(0,7) === monthFilter);
+      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.restoration && row.restoration.is_closed) && matchesMonth;
     });
 }
 function renderRestorations(){
   const list = filteredRestorations();
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>対象物件</th><th>退去日</th><th>工事内容</th><th>発注日</th><th>完了日</th><th>業者</th><th>売上</th><th>原価</th><th>粗利</th><th>状況</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
-  tbody.innerHTML = list.map(function(row){
+  thead.innerHTML = '<tr><th>対象物件</th><th>退去日</th><th>工事内容</th><th>業者名</th><th>発注日</th><th>完了日</th><th>完了確認日</th><th>売上</th><th>原価</th><th>粗利</th><th>担当者</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
+  let totalRevenue = 0, totalCost = 0, totalProfit = 0;
+  const rowsHtml = list.map(function(row){
     const r = row.restoration;
     const profit = (r && r.revenue != null && r.cost != null) ? (Number(r.revenue) - Number(r.cost)) : null;
-    const status = siteStatus(r, RESTORATION_FIELDS, ['contract_id','notes']);
+    if (r && r.revenue != null) totalRevenue += Number(r.revenue);
+    if (r && r.cost != null) totalCost += Number(r.cost);
+    if (profit != null) totalProfit += profit;
     return '<tr>' +
       '<td>' + esc(contractLabel(row.contract)) + '</td>' +
       '<td>' + esc(row.contract.move_out_date) + '</td>' +
       '<td>' + esc(r ? r.work_content : '') + '</td>' +
+      '<td>' + esc(r ? r.vendor : '') + '</td>' +
       '<td>' + esc(r ? r.order_date : '') + '</td>' +
       '<td>' + esc(r ? r.completed_date : '') + '</td>' +
-      '<td>' + esc(r ? r.vendor : '') + '</td>' +
+      '<td>' + esc(r ? r.completion_confirmed_date : '') + '</td>' +
       '<td>' + (r ? fmtMoney(r.revenue) : '') + '</td>' +
       '<td>' + (r ? fmtMoney(r.cost) : '') + '</td>' +
       '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
-      '<td><span class="status-chip status-' + status + '">' + status + '</span></td>' +
+      '<td>' + esc(r ? r.staff : '') + '</td>' +
       '<td class="row-actions"><button data-action="edit-restoration" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
+  const totalRow = '<tr class="total-row">' +
+    '<td colspan="7">合計金額</td>' +
+    '<td>' + fmtMoney(totalRevenue) + '</td>' +
+    '<td>' + fmtMoney(totalCost) + '</td>' +
+    '<td>' + fmtMoney(totalProfit) + '</td>' +
+    '<td></td><td></td>' +
+  '</tr>';
+  tbody.innerHTML = rowsHtml + totalRow;
 }
 document.getElementById('table-restorations').addEventListener('click', function(e){
   const btn = e.target.closest('button[data-action="edit-restoration"]');
@@ -935,6 +954,7 @@ document.getElementById('table-restorations').addEventListener('click', function
   }
 });
 document.getElementById('search-restorations').addEventListener('input', renderRestorations);
+document.getElementById('month-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('closed-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null); });
 document.getElementById('export-restorations').addEventListener('click', function(){
@@ -965,10 +985,12 @@ function openRecordModal(table, fields, title, record, presetContractId){
     updatedByFieldHtml(record) +
     '<div class="form-msg" id="form-msg"></div>' +
     '<div class="modal-actions">' +
-      '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
-      (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
-      closeButtonHtml(record) +
-      '<button class="btn" id="modal-save">保存</button>' +
+      '<div class="modal-actions-left">' +
+        '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+        (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+        closeButtonHtml(record) +
+      '</div>' +
+      '<button class="btn save" id="modal-save">保存</button>' +
     '</div>';
 
   document.getElementById('modal-backdrop').hidden = false;
@@ -1110,10 +1132,12 @@ function workOrderModalHtml(record){
     updatedByFieldHtml(record) +
     '<div class="form-msg" id="form-msg"></div>' +
     '<div class="modal-actions">' +
-      '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
-      (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
-      closeButtonHtml(record) +
-      '<button class="btn" id="modal-save">保存</button>' +
+      '<div class="modal-actions-left">' +
+        '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+        (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+        closeButtonHtml(record) +
+      '</div>' +
+      '<button class="btn save" id="modal-save">保存</button>' +
     '</div>';
 }
 
