@@ -1024,12 +1024,11 @@ function closeModal(){
 }
 document.getElementById('modal-backdrop').addEventListener('click', function(e){
   if (e.target.id !== 'modal-backdrop') return;
-  if (confirm('入力中の内容を保存しますか？\n（キャンセルすると入力内容は破棄されます）')){
+  if (confirm('入力中の内容を保存しますか？\n（「キャンセル」を選ぶと入力画面に戻ります。入力内容は消えません）')){
     const saveBtn = document.getElementById('modal-save');
     if (saveBtn) saveBtn.click();
-  } else {
-    closeModal();
   }
+  // 「戻る」を選んだ場合は何もせず、入力画面のまま維持する
 });
 
 // =========================================================
