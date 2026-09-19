@@ -528,21 +528,22 @@ const RESTORATION_FIELDS = {
 
 const POWER_CONTRACT_FIELD = {
   contract_id:{ label:'対象物件', type:'contract-select', required:true },
+  room_no_display:{ label:'部屋番号', type:'computed' },
 };
-// 新規ツール（入居・通電開始）
+// 開始ツール（通電開始）：①解約の退去立会日を参照
 const POWER_NEW_FIELDS = {
-  move_in_confirmed_display:{ label:'入居日', type:'computed' },
+  move_out_walkthrough_display:{ label:'退去立会日', type:'computed' },
   power_on_staff:{ label:'通電担当者', type:'text', suggest:'name' },
   power_on_request_date:{ label:'通電依頼日', type:'date' },
   water_heater_request_date:{ label:'電気温水器通電依頼日', type:'date' },
   power_on_date:{ label:'通電開始日', type:'date' },
   power_on_web_application_no:{ label:'WEB申込番号', type:'text' },
 };
-// 退去ツール（退去立会・通電停止）
+// 停止ツール（通電停止）：①契約の入居確定日を参照
 const POWER_MOVEOUT_FIELDS = {
-  move_out_walkthrough_display:{ label:'退去立会日', type:'computed' },
+  move_in_confirmed_display:{ label:'入居日', type:'computed' },
   power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
-  power_off_request_date:{ label:'通電停止依頼日', type:'date' },
+  power_off_request_date:{ label:'通電停止依頼日', type:'date', full:true },
   power_off_date:{ label:'通電停止日', type:'date' },
   power_off_web_application_no:{ label:'WEB申込番号', type:'text' },
 };
@@ -1349,6 +1350,7 @@ function updateContractLinkedDisplays(){
     move_out_received_display: c ? c.move_out_notice_date : null,
     move_out_date_display: c ? c.move_out_date : null,
     move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
+    room_no_display: c ? c.room_no : null,
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
@@ -1453,12 +1455,13 @@ function renderPower(){
   const list = filteredPower();
   const table = document.getElementById('table-power');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>対象物件</th><th>通電依頼日</th><th>通電開始日</th><th>通電停止依頼日</th><th>通電停止日</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="6"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th>物件名</th><th>部屋番号</th><th>通電依頼日</th><th>通電開始日</th><th>通電停止依頼日</th><th>通電停止日</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="7"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.power;
     return '<tr>' +
-      '<td>' + esc(powerContractLabel(row.contract)) + '</td>' +
+      '<td>' + esc(row.contract.property_name) + '</td>' +
+      '<td>' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(r ? r.power_on_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_on_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_request_date : '') + '</td>' +
@@ -1489,13 +1492,14 @@ document.getElementById('export-power').addEventListener('click', function(){
 function powerModalHtml(record){
   const selectedId = record ? record.contract_id : null;
   const contractFieldHtml = '<div class="field"><label>対象物件 <span class="req">*</span></label>' +
-    '<select data-key="contract_id">' + contractOptionsHtml(selectedId, powerContractLabel) + '</select></div>';
+    '<select data-key="contract_id">' + contractOptionsHtml(selectedId, powerContractLabel) + '</select></div>' +
+    renderField('room_no_display', POWER_CONTRACT_FIELD.room_no_display, null);
   return '' +
     '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
     '<div class="sub">対象契約を選んで登録してください。</div>' +
     '<div class="form-grid">' + contractFieldHtml + '</div>' +
-    '<fieldset><legend>新規ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
-    '<fieldset><legend>退去ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
+    '<fieldset><legend>開始ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
+    '<fieldset><legend>停止ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
     '<div class="form-grid">' + renderField('notes', POWER_NOTES_FIELD.notes, record ? record.notes : '') + '</div>' +
     updatedByFieldHtml(record) +
     '<div class="form-msg" id="form-msg"></div>' +
