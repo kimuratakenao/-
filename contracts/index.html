@@ -390,20 +390,19 @@ const RESTORATION_FIELDS = {
   move_out_received_display:{ label:'退去受付日', type:'computed' },
   move_out_date_display:{ label:'退去日（解約日）', type:'computed' },
   work_content:{ label:'工事内容', type:'textarea' },
+  vendor:{ label:'業者名', type:'text', suggest:'vendor' },
   order_date:{ label:'発注日', type:'date' },
   completed_date:{ label:'完了日', type:'date' },
   completion_confirmed_date:{ label:'完了確認日', type:'date' },
-  next_move_in_date:{ label:'次回入居日', type:'date' },
-  vendor:{ label:'業者', type:'text', suggest:'vendor' },
-  billing_method:{ label:'請求方法', type:'text' },
   billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
-  invoice_filed:{ label:'請求書格納', type:'bool' },
+  billing_method:{ label:'請求方法', type:'text' },
+  invoice_filed:{ label:'請求書格納日', type:'date' },
   payment_date:{ label:'入金日', type:'date' },
-  revenue:{ label:'売上（円）', type:'number' },
-  cost:{ label:'原価（円）', type:'number' },
-  tenant_burden:{ label:'退去者負担（円）', type:'number' },
-  owner_burden:{ label:'オーナー負担（円）', type:'number' },
-  agreement_doc:{ label:'約定書', type:'text' },
+  revenue:{ label:'売上金額', type:'number' },
+  cost:{ label:'原価', type:'number' },
+  profit_display:{ label:'粗利', type:'computed' },
+  tenant_burden:{ label:'退去者負担額', type:'number' },
+  owner_burden_display:{ label:'オーナー負担額', type:'computed' },
   notes:{ label:'備考', type:'textarea' },
 };
 
@@ -945,6 +944,11 @@ function openRecordModal(table, fields, title, record, presetContractId){
     contractSelect.addEventListener('change', updateContractLinkedDisplays);
     updateContractLinkedDisplays();
   }
+  ['revenue','cost','tenant_burden'].forEach(function(key){
+    const el = document.querySelector('#modal [data-key="' + key + '"]');
+    if (el) el.addEventListener('input', updateRestorationComputedDisplays);
+  });
+  updateRestorationComputedDisplays();
 }
 
 // 対象物件（契約）の選択に応じて、①側の情報を読み取り専用で表示する（②の入居予定日・入居確定日・消毒施工など）
@@ -963,6 +967,21 @@ function updateContractLinkedDisplays(){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
     if (out) out.textContent = map[key] || '—';
   });
+}
+
+// ③退去・原状回復工事: 売上・原価・退去者負担額から粗利／オーナー負担額をその場で計算する
+function updateRestorationComputedDisplays(){
+  const revenueEl = document.querySelector('#modal [data-key="revenue"]');
+  const costEl = document.querySelector('#modal [data-key="cost"]');
+  const tenantEl = document.querySelector('#modal [data-key="tenant_burden"]');
+  if (!revenueEl || !costEl) return;
+  const revenue = parseFloat(revenueEl.value);
+  const cost = parseFloat(costEl.value);
+  const tenant = tenantEl ? parseFloat(tenantEl.value) : NaN;
+  const profitOut = document.querySelector('#modal [data-computed="profit_display"]');
+  if (profitOut) profitOut.textContent = (isNaN(revenue) || isNaN(cost)) ? '—' : (revenue - cost).toLocaleString('ja-JP') + '円';
+  const ownerOut = document.querySelector('#modal [data-computed="owner_burden_display"]');
+  if (ownerOut) ownerOut.textContent = (isNaN(revenue) || isNaN(tenant)) ? '—' : (revenue - tenant).toLocaleString('ja-JP') + '円';
 }
 
 async function saveRecord(table, fields, record){
