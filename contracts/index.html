@@ -521,12 +521,10 @@ const WORKORDER_VENDOR_FIELDS = {
   entered_by:{ label:'入力者', type:'text', suggest:'name' },
   vendor_requester:{ label:'業者依頼担当者', type:'text', suggest:'name' },
   vendor_orderer:{ label:'業者発注担当者', type:'text', suggest:'name' },
-  status:{ label:'状況', type:'text' },
+  invoice_filed:{ label:'請求書格納日', type:'date' },
   billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
   payment_method:{ label:'支払い方法', type:'text' },
   payment_date:{ label:'入金日', type:'date' },
-  invoice_filed:{ label:'請求書格納', type:'bool' },
-  agreement_doc:{ label:'約定書', type:'text' },
 };
 // 区分が「自社物件」のときだけ入力する項目
 const WORKORDER_INHOUSE_FIELDS = {
