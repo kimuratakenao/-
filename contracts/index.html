@@ -196,6 +196,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   <section class="panel" id="panel-contracts">
     <div class="toolbar">
       <input type="text" id="search-contracts" placeholder="物件名・部屋番号・氏名で検索">
+      <input type="month" id="month-filter-contracts" title="入居希望日・入居確定日・退去日検索（月）">
       <select id="type-filter-contracts">
         <option value="">区分: すべて</option>
         <option value="契約">契約</option>
@@ -258,6 +259,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <div class="note-box">入居中に発生した設備工事・自社施工を1件ずつ記録します（売上・原価・粗利を含む）。1つの契約に複数件登録できます。</div>
     <div class="toolbar">
       <input type="text" id="search-workorders" placeholder="物件名・部屋番号・工事内容で検索">
+      <input type="month" id="month-filter-workorders" title="完了日検索（月）">
       <select id="type-filter-workorders">
         <option value="">区分: すべて</option>
         <option value="オーナー物件">オーナー物件</option>
@@ -542,12 +544,8 @@ const WORKORDER_VENDOR_FIELDS = {
   payment_method:{ label:'支払い方法', type:'text' },
   payment_date:{ label:'入金日', type:'date' },
 };
-// 区分が「自社物件」のときだけ入力する項目
-const WORKORDER_INHOUSE_FIELDS = {
-  staff:{ label:'担当者', type:'text', suggest:'name' },
-  department:{ label:'部署', type:'text' },
-  work_date:{ label:'施工日', type:'date' },
-};
+// 区分が「自社物件」のときの詳細項目：オーナー物件の詳細と同じ内容にする
+const WORKORDER_INHOUSE_FIELDS = WORKORDER_VENDOR_FIELDS;
 
 let contracts = [];
 let inspections = [];
@@ -677,13 +675,15 @@ function matchesClosedFilter(filterValue, isClosed){
 
 function filteredContracts(){
   const search = document.getElementById('search-contracts').value.trim().toLowerCase();
+  const monthFilter = document.getElementById('month-filter-contracts').value;
   const statusFilter = document.getElementById('status-filter-contracts').value;
   const typeFilter = document.getElementById('type-filter-contracts').value;
   const closedFilter = document.getElementById('closed-filter-contracts').value;
   let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
   list = list.filter(function(r){
     const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name].join(' ').toLowerCase();
-    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
+    const matchesMonth = !monthFilter || [r.contract_date, r.move_in_confirmed_date, r.move_out_date].some(function(d){ return d && d.slice(0,7) === monthFilter; });
+    return (!search || hay.indexOf(search) !== -1) && matchesMonth && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
   });
   const s = sort.contracts;
   list.sort(function(a, b){
@@ -737,6 +737,7 @@ document.getElementById('table-contracts').addEventListener('click', function(e)
   if (btn) openContractModal(contracts.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
 });
 document.getElementById('search-contracts').addEventListener('input', renderContracts);
+document.getElementById('month-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('status-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('type-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('closed-filter-contracts').addEventListener('change', renderContracts);
@@ -1473,14 +1474,16 @@ async function saveWorkOrder(record){
 
 function filteredWorkOrders(){
   const search = document.getElementById('search-workorders').value.trim().toLowerCase();
+  const monthFilter = document.getElementById('month-filter-workorders').value;
   const typeFilter = document.getElementById('type-filter-workorders').value;
   const closedFilter = document.getElementById('closed-filter-workorders').value;
   return workOrders
     .filter(function(r){
       const hay = ((r.property_name || '') + ' ' + (r.room_no || '') + ' ' + (r.work_content || '')).toLowerCase();
       const matchesSearch = !search || hay.indexOf(search) !== -1;
+      const matchesMonth = !monthFilter || (r.completed_date && r.completed_date.slice(0,7) === monthFilter);
       const matchesType = !typeFilter || r.work_type === typeFilter;
-      return matchesSearch && matchesType && matchesClosedFilter(closedFilter, r.is_closed);
+      return matchesSearch && matchesMonth && matchesType && matchesClosedFilter(closedFilter, r.is_closed);
     })
     .sort(function(a, b){ return (b.created_at || '') > (a.created_at || '') ? 1 : -1; });
 }
@@ -1525,6 +1528,7 @@ document.getElementById('table-workorders').addEventListener('click', function(e
   if (btn) openWorkOrderModal(workOrders.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
 });
 document.getElementById('search-workorders').addEventListener('input', renderWorkOrders);
+document.getElementById('month-filter-workorders').addEventListener('change', renderWorkOrders);
 document.getElementById('type-filter-workorders').addEventListener('change', renderWorkOrders);
 document.getElementById('closed-filter-workorders').addEventListener('change', renderWorkOrders);
 document.getElementById('add-workorder').addEventListener('click', function(){ openWorkOrderModal(null); });
