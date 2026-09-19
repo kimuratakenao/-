@@ -173,7 +173,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <div>
       <div class="brand">契約進捗・入退去管理アプリ</div>
       <div class="tagline">事務（契約・解約）と現場（点検・原状回復）を1つの契約データにまとめ、抜け漏れを検知します</div>
-      <div class="phase-note">※ 通電一覧はまだ未実装です。それ以外（契約・解約・入居前点検・退去原状回復・設備工事・自社施工）はここに集約されています。</div>
+      <div class="phase-note">※ 通電一覧はまだ未実装です。それ以外（契約・解約・入居前点検・退去・原状回復工事・設備工事・自社施工）はここに集約されています。</div>
     </div>
     <div class="conn-note" id="conn-note"></div>
   </header>
@@ -181,7 +181,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   <div class="tabs">
     <button class="tab-btn active" data-tab="contracts">① 契約・解約 進捗</button>
     <button class="tab-btn" data-tab="inspections">② 入居前点検</button>
-    <button class="tab-btn" data-tab="restorations">③ 退去原状回復</button>
+    <button class="tab-btn" data-tab="restorations">③ 退去・原状回復工事</button>
     <button class="tab-btn" data-tab="workorders">④ 設備工事</button>
     <button class="tab-btn" data-tab="gaps">⑤ 漏れチェック <span class="count" id="gap-count" hidden>0</span></button>
   </div>
@@ -375,27 +375,23 @@ const INSPECTION_FIELDS = {
   inspection_scheduled_date:{ label:'点検予定日', type:'date' },
   key_exchange_due_date:{ label:'鍵交換期日', type:'date' },
   ignition_test_done:{ label:'点火試験', type:'select', options:['○','×'] },
-  disinfection_display:{ label:'消毒施工', type:'computed' },
   inspection_completed_date:{ label:'点検完了日', type:'date' },
+  disinfection_display:{ label:'消毒施工', type:'computed' },
   cylinder_stock:{ label:'シリンダー在庫', type:'select', options:['○','×'] },
   power_stop_done:{ label:'電気停止手続', type:'bool' },
   notes:{ label:'備考', type:'textarea' },
 };
 
 const RESTORATION_FIELDS = {
-  contract_id:{ label:'対象契約', type:'contract-select', required:true },
-  biruashi_no:{ label:'ビルアシNo.', type:'text' },
+  contract_id:{ label:'対象物件', type:'contract-select', required:true },
   staff:{ label:'担当者', type:'text', suggest:'name' },
-  work_content:{ label:'工事内容', type:'text' },
-  move_out_received_date:{ label:'退去受付日', type:'date' },
+  move_out_received_display:{ label:'退去受付日', type:'computed' },
+  move_out_date_display:{ label:'退去日（解約日）', type:'computed' },
+  work_content:{ label:'工事内容', type:'textarea' },
   order_date:{ label:'発注日', type:'date' },
   completed_date:{ label:'完了日', type:'date' },
   completion_confirmed_date:{ label:'完了確認日', type:'date' },
   next_move_in_date:{ label:'次回入居日', type:'date' },
-  owner_quote_submitted_date:{ label:'(見積)オーナー提出日', type:'date' },
-  listing_start_date:{ label:'募集開始日（レインズ）', type:'date' },
-  reapplication_date:{ label:'次回申込日', type:'date' },
-  contract_signed_date:{ label:'成約日', type:'date' },
   vendor:{ label:'業者', type:'text', suggest:'vendor' },
   billing_method:{ label:'請求方法', type:'text' },
   billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
@@ -679,7 +675,7 @@ function contractModalHtml(record){
   const assigneeFieldHtml = renderField('assignee', ASSIGNEE_FIELD.assignee, record ? record.assignee : '');
   return '' +
     '<h2>' + (record ? '編集：' + esc(contractLabel(record)) : '契約 新規登録') + '</h2>' +
-    '<div class="sub">物件名・部屋番号・契約者ごとに1行の契約データです。同じ部屋でも入居者が変われば新しい契約として登録してください。「登録区分」が契約の間は②入居前点検、解約になったら③退去原状回復にだけ表示されます。区分を変えると入力項目も切り替わります。</div>' +
+    '<div class="sub">物件名・部屋番号・契約者ごとに1行の契約データです。同じ部屋でも入居者が変われば新しい契約として登録してください。「登録区分」が契約の間は②入居前点検、解約になったら③退去・原状回復工事にだけ表示されます。区分を変えると入力項目も切り替わります。</div>' +
     '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + assigneeFieldHtml + '</div></fieldset>' +
     '<div id="contract-form-body">' + contractFormBodyHtml(recordType, record) + '</div>' +
     (record ? relatedRecordsHtml(record.id) : '') +
@@ -703,7 +699,7 @@ function relatedRecordsHtml(contractId){
     '<div><b style="font-size:12px;">入居前点検</b>' + list(insp, '未登録', function(r){
       return '点検完了日: ' + esc(r.inspection_completed_date || '未完了') + '（更新: ' + esc(r.updated_by || '') + '）';
     }) + '</div>' +
-    '<div style="margin-top:8px;"><b style="font-size:12px;">退去原状回復</b>' + list(rest, '未登録', function(r){
+    '<div style="margin-top:8px;"><b style="font-size:12px;">退去・原状回復工事</b>' + list(rest, '未登録', function(r){
       return '完了日: ' + esc(r.completed_date || '未完了') + ' / 売上' + fmtMoney(r.revenue) + '（更新: ' + esc(r.updated_by || '') + '）';
     }) + '</div></div>';
 }
@@ -860,7 +856,7 @@ document.getElementById('export-inspections').addEventListener('click', function
 function filteredRestorations(){
   const search = document.getElementById('search-restorations').value.trim().toLowerCase();
   return contracts
-    .filter(function(c){ return c.record_type === '解約'; })
+    .filter(function(c){ return c.record_type === '解約' && c.move_out_date; })
     .map(function(c){ return { contract:c, restoration: latestByContract(restorations, c.id) }; })
     .filter(function(row){
       const hay = contractLabel(row.contract).toLowerCase();
@@ -871,7 +867,7 @@ function renderRestorations(){
   const list = filteredRestorations();
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>対象契約</th><th>退去日</th><th>工事内容</th><th>発注日</th><th>完了日</th><th>業者</th><th>売上</th><th>原価</th><th>粗利</th><th>状況</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th>対象物件</th><th>退去日</th><th>工事内容</th><th>発注日</th><th>完了日</th><th>業者</th><th>売上</th><th>原価</th><th>粗利</th><th>状況</th><th>操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.restoration;
@@ -897,17 +893,17 @@ document.getElementById('table-restorations').addEventListener('click', function
   if (!btn) return;
   const id = btn.getAttribute('data-id');
   if (id){
-    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', restorations.find(function(r){ return r.id === id; }));
+    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', restorations.find(function(r){ return r.id === id; }));
   } else {
-    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', null, btn.getAttribute('data-contract-id'));
+    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null, btn.getAttribute('data-contract-id'));
   }
 });
 document.getElementById('search-restorations').addEventListener('input', renderRestorations);
-document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', null); });
+document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null); });
 document.getElementById('export-restorations').addEventListener('click', function(){
   const cols = Object.keys(RESTORATION_FIELDS);
   const rows = filteredRestorations().map(function(row){ return Object.assign({}, row.restoration || {}, { contract_id: contractLabel(row.contract) }); });
-  exportCsv('退去原状回復', rows, cols, function(c){ return RESTORATION_FIELDS[c].label; });
+  exportCsv('退去・原状回復工事', rows, cols, function(c){ return RESTORATION_FIELDS[c].label; });
 });
 
 // ---- generic record modal (inspections / restorations) ----
@@ -958,6 +954,8 @@ function updateContractLinkedDisplays(){
     move_in_scheduled_display: c ? c.contract_date : null,
     move_in_confirmed_display: c ? c.move_in_confirmed_date : null,
     disinfection_display: c ? c.disinfection_status : null,
+    move_out_received_display: c ? c.move_out_notice_date : null,
+    move_out_date_display: c ? c.move_out_date : null,
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
@@ -1171,10 +1169,10 @@ function computeGaps(){
     // 事務⇄現場の食い違いチェック
     if (tag === '解約'){
       if (c.settlement_sent_date && !rest.length){
-        items.push({ tag:tag, label:label, text: '精算書は発送済みだが、退去原状回復の記録が未登録', open: function(){ openContractModal(c); } });
+        items.push({ tag:tag, label:label, text: '精算書は発送済みだが、退去・原状回復工事の記録が未登録', open: function(){ openContractModal(c); } });
       }
       if (!rest.length && c.move_out_date && (daysSince(c.move_out_date) || 0) >= 14){
-        items.push({ tag:tag, label:label, text: '退去日から' + daysSince(c.move_out_date) + '日経過しているが、退去原状回復が未登録', open: function(){ openContractModal(c); } });
+        items.push({ tag:tag, label:label, text: '退去日から' + daysSince(c.move_out_date) + '日経過しているが、退去・原状回復工事が未登録', open: function(){ openContractModal(c); } });
       }
       rest.forEach(function(r){
         if (r.completed_date && !c.settlement_sent_date){
@@ -1206,7 +1204,7 @@ function computeGaps(){
     rest.forEach(function(r){
       const b = blankFieldLabels(r, RESTORATION_FIELDS, ['notes','contract_id']);
       if (b.length){
-        items.push({ tag:'解約', label:label, text: '退去原状回復の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去原状回復', r); } });
+        items.push({ tag:'解約', label:label, text: '退去・原状回復工事の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', r); } });
       }
     });
   });
