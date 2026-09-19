@@ -179,7 +179,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   </header>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="contracts">① 契約進捗（事務）</button>
+    <button class="tab-btn active" data-tab="contracts">① 契約・解約 進捗</button>
     <button class="tab-btn" data-tab="inspections">② 入居前点検</button>
     <button class="tab-btn" data-tab="restorations">③ 退去原状回復</button>
     <button class="tab-btn" data-tab="workorders">④ 設備工事</button>
@@ -285,14 +285,19 @@ function updatedByFieldHtml(record){
   return '<div class="form-grid">' + renderField('updated_by', UPDATED_BY_FIELD.updated_by, record ? record.updated_by : '') + '</div>';
 }
 
+// 登録区分の隣に表示する担当者
+const ASSIGNEE_FIELD = {
+  assignee:{ label:'担当者', type:'text', suggest:'name' },
+};
+
 // 契約でも解約でも共通して必要な項目
 const CONTRACT_COMMON_FIELDS = {
   property_name:{ label:'物件名', type:'text', required:true },
   room_no:      { label:'部屋番号', type:'text', required:true },
   contract_name:{ label:'契約者名', type:'text' },
+  resident_name:{ label:'入居者名', type:'text' },
   contact:      { label:'連絡先', type:'text' },
-  assignee:     { label:'担当者', type:'text', suggest:'name' },
-  notes:        { label:'仲介業者・担当者', type:'textarea' },
+  notes:        { label:'備考（仲介業者・担当者）', type:'textarea' },
 };
 
 // 登録区分が「契約」のときだけ入力する項目
@@ -319,19 +324,21 @@ const CONTRACT_NEW_FIELDS = {
   owner_approval_date:{ label:'オーナー承認日', type:'date' },
   screening_result_notified:{ label:'審査結果連絡日', type:'date' },
   heyaho_status:{ label:'へやほ加入', type:'select', options:['加入','自己手配'] },
+  heyaho_joined_date:{ label:'加入日', type:'date' },
   mamorocca_joined:{ label:'Mamorocca新規加入', type:'bool' },
   contract_doc_sent_date:{ label:'契約書発送日', type:'date' },
   contract_doc_collected_date:{ label:'契約書回収日', type:'date' },
-  deposit_confirmed_date:{ label:'入金確認日', type:'date' },
+  deposit_confirmed_date:{ label:'契約金入金確認日', type:'date' },
   key_arrangement_date:{ label:'鍵送付日', type:'date' },
   key_receipt_collected_date:{ label:'鍵預り証回収日', type:'date' },
-  transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
-  ad_billing_status:{ label:'AD依頼日', type:'date' },
-  agency_fee:{ label:'業務委託料', type:'number' },
-  ad_amount:{ label:'AD額', type:'number' },
-  brokerage_fee:{ label:'仲介手数料', type:'number' },
+  ad_billing_status:{ label:'AD支払依頼日', type:'date' },
   ad_payment_method:{ label:'AD支払方法', type:'text' },
+  ad_amount:{ label:'AD額', type:'number' },
   ad_payment_date:{ label:'AD支払日', type:'date' },
+  agency_fee:{ label:'業務委託料', type:'number' },
+  brokerage_fee:{ label:'仲介手数料', type:'number' },
+  transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
+  contract_checklist_notes:{ label:'備考', type:'textarea' },
 };
 
 const CONTRACT_CANCEL_FIELDS = {
@@ -564,7 +571,7 @@ function filteredContracts(){
 
 const CONTRACT_COLS = ['record_type','property_name','room_no','applicant_name','contract_name','contract_date','move_out_date','status','assignee'];
 const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
-const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
+const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
 function renderContracts(){
   const list = filteredContracts();
@@ -645,7 +652,7 @@ function contractFormBodyHtml(recordType, record){
     : Object.assign({}, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS);
   const checklistFieldset = recordType === '解約'
     ? '<fieldset><legend>解約手続チェックリスト（事務）</legend>' + fieldSectionHtml(CONTRACT_CANCEL_FIELDS, record) + '</fieldset>'
-    : '<fieldset><legend>新規契約チェックリスト（事務）</legend>' + fieldSectionHtml(CONTRACT_NEW_FIELDS, record) + '</fieldset>';
+    : '<fieldset><legend>新規契約チェックリスト</legend>' + fieldSectionHtml(CONTRACT_NEW_FIELDS, record) + '</fieldset>';
   return '<fieldset><legend>基本情報（' + esc(recordType) + '）</legend>' + fieldSectionHtml(basicFields, record) + '</fieldset>' + checklistFieldset;
 }
 
@@ -654,10 +661,11 @@ function contractModalHtml(record){
   const typeSelectHtml = '<div class="field"><label>登録区分 <span class="req">*</span></label><select data-key="record_type">' +
     CONTRACT_TYPE_FIELDS.record_type.options.map(function(o){ return '<option value="' + esc(o) + '"' + (o === recordType ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
     '</select></div>';
+  const assigneeFieldHtml = renderField('assignee', ASSIGNEE_FIELD.assignee, record ? record.assignee : '');
   return '' +
     '<h2>' + (record ? '編集：' + esc(contractLabel(record)) : '契約 新規登録') + '</h2>' +
     '<div class="sub">物件名・部屋番号・契約者ごとに1行の契約データです。同じ部屋でも入居者が変われば新しい契約として登録してください。「登録区分」が契約の間は②入居前点検、解約になったら③退去原状回復にだけ表示されます。区分を変えると入力項目も切り替わります。</div>' +
-    '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + '</div></fieldset>' +
+    '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + assigneeFieldHtml + '</div></fieldset>' +
     '<div id="contract-form-body">' + contractFormBodyHtml(recordType, record) + '</div>' +
     (record ? relatedRecordsHtml(record.id) : '') +
     updatedByFieldHtml(record) +
@@ -707,7 +715,7 @@ function openContractModal(record){
 
 async function saveContract(record){
   const modal = document.getElementById('modal');
-  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
+  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
   const payload = {};
   let firstError = null;
   modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
