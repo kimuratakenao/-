@@ -294,7 +294,7 @@ const ASSIGNEE_FIELD = {
 const CONTRACT_COMMON_FIELDS = {
   property_name:{ label:'物件名', type:'text', required:true },
   room_no:      { label:'部屋番号', type:'text', required:true },
-  contract_name:{ label:'契約者名', type:'text' },
+  contract_name:{ label:'契約者名', type:'text', full:true },
   resident_name:{ label:'入居者名', type:'text' },
   contact:      { label:'連絡先', type:'text' },
   notes:        { label:'備考（仲介業者・担当者）', type:'textarea' },
@@ -302,7 +302,6 @@ const CONTRACT_COMMON_FIELDS = {
 
 // 登録区分が「契約」のときだけ入力する項目
 const CONTRACT_ONLY_FIELDS = {
-  applicant_name:{ label:'申込者名', type:'text' },
   application_date:{ label:'申込日', type:'date' },
   contract_date:{ label:'入居希望日', type:'date' },
   move_in_confirmed_date:{ label:'入居確定日', type:'date' },
@@ -555,7 +554,7 @@ function filteredContracts(){
   const statusFilter = document.getElementById('status-filter-contracts').value;
   let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
   list = list.filter(function(r){
-    const hay = [r.property_name, r.room_no, r.applicant_name, r.contract_name].join(' ').toLowerCase();
+    const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name].join(' ').toLowerCase();
     return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter);
   });
   const s = sort.contracts;
@@ -569,7 +568,7 @@ function filteredContracts(){
   return list;
 }
 
-const CONTRACT_COLS = ['record_type','property_name','room_no','applicant_name','contract_name','contract_date','move_out_date','status','assignee'];
+const CONTRACT_COLS = ['record_type','property_name','room_no','resident_name','contract_name','contract_date','move_out_date','status','assignee'];
 const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
 const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
@@ -639,7 +638,8 @@ function renderField(key, f, val){
   }
   const req = f.required ? ' <span class="req">*</span>' : '';
   const listAttr = f.suggest ? ' list="dl-' + f.suggest + '"' : '';
-  return '<div class="field"><label>' + esc(f.label) + req + '</label><input type="' + f.type + '" data-key="' + key + '" value="' + esc(val == null ? '' : val) + '"' + listAttr + '></div>';
+  const fullClass = f.full ? ' full' : '';
+  return '<div class="field' + fullClass + '"><label>' + esc(f.label) + req + '</label><input type="' + f.type + '" data-key="' + key + '" value="' + esc(val == null ? '' : val) + '"' + listAttr + '></div>';
 }
 
 function fieldSectionHtml(fields, record){
