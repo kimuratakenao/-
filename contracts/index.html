@@ -393,6 +393,8 @@ const PARKING_ONLY_FIELDS = {
   application_date:{ label:'申込日', type:'date' },
   contract_execution_date:{ label:'契約締結日', type:'date' },
   contract_start_date:{ label:'契約開始日', type:'date' },
+  storage_consent_form_status:{ label:'保管場所使用承諾書', type:'select', options:['有','無'] },
+  storage_consent_arranged_date:{ label:'保管場所使用承諾書手配日', type:'date' },
 };
 
 // 駐車場：新規契約チェックリスト（①のCONTRACT_NEW_FIELDSからへやほ・Mamorocca・契約書発送日・鍵関連・AD関係を除いたもの）
@@ -407,8 +409,6 @@ const PARKING_NEW_FIELDS = {
   agency_fee:{ label:'業務委託料', type:'number' },
   brokerage_fee:{ label:'仲介手数料', type:'number' },
   transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
-  storage_consent_form_status:{ label:'保管場所使用承諾書', type:'select', options:['有','無'] },
-  storage_consent_arranged_date:{ label:'保管場所使用承諾書手配日', type:'date' },
   contract_checklist_notes:{ label:'備考', type:'textarea' },
 };
 
