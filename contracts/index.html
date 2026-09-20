@@ -398,7 +398,6 @@ const PARKING_ONLY_FIELDS = {
 // 駐車場：新規契約チェックリスト（①のCONTRACT_NEW_FIELDSからへやほ・Mamorocca・契約書発送日・鍵関連・AD関係を除いたもの）
 const PARKING_NEW_FIELDS = {
   application_folder_stored:{ label:'申込書格納', type:'bool' },
-  movein_moveout_list_entered_movein:{ label:'入退去一覧入力', type:'bool' },
   eeseikatsu_entered_movein:{ label:'いい生活入力', type:'bool' },
   guarantor_approval_date:{ label:'保証会社審査承認日', type:'date' },
   owner_approval_date:{ label:'オーナー承認日', type:'date' },
@@ -408,6 +407,8 @@ const PARKING_NEW_FIELDS = {
   agency_fee:{ label:'業務委託料', type:'number' },
   brokerage_fee:{ label:'仲介手数料', type:'number' },
   transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
+  storage_consent_form_status:{ label:'保管場所使用承諾書', type:'select', options:['有','無'] },
+  storage_consent_arranged_date:{ label:'保管場所使用承諾書手配日', type:'date' },
   contract_checklist_notes:{ label:'備考', type:'textarea' },
 };
 
@@ -420,7 +421,6 @@ const PARKING_CANCEL_FIELDS = {
   guarantor_name:{ label:'保証会社名', type:'text', suggest:'vendor' },
   guarantor_procedure_date:{ label:'保証会社手続日', type:'date' },
   eeseikatsu_entered_moveout:{ label:'いい生活入力', type:'bool' },
-  movein_moveout_list_entered_moveout:{ label:'入退去一覧入力', type:'bool' },
   settlement_type:{ label:'精算区分（請求/返金）', type:'select', options:['請求','返金'] },
   settlement_sent_date:{ label:'精算書発送日', type:'date' },
   settlement_payment_confirmed:{ label:'精算書格納', type:'bool' },
@@ -448,7 +448,6 @@ const CANCEL_ONLY_FIELDS = {
 
 const CONTRACT_NEW_FIELDS = {
   application_folder_stored:{ label:'申込書格納', type:'bool' },
-  movein_moveout_list_entered_movein:{ label:'入退去一覧入力', type:'bool' },
   eeseikatsu_entered_movein:{ label:'いい生活入力', type:'bool' },
   guarantor_approval_date:{ label:'保証会社審査承認日', type:'date' },
   owner_approval_date:{ label:'オーナー承認日', type:'date' },
@@ -481,7 +480,6 @@ const CONTRACT_CANCEL_FIELDS = {
   insurance_company_name:{ label:'保険会社名', type:'text', suggest:'vendor' },
   insurance_procedure_date:{ label:'保険会社手続日', type:'date' },
   eeseikatsu_entered_moveout:{ label:'いい生活入力', type:'bool' },
-  movein_moveout_list_entered_moveout:{ label:'入退去一覧入力', type:'bool' },
   ierabu_cancelled_date:{ label:'いえらぶ解約手配日', type:'date' },
   settlement_type:{ label:'精算区分（請求/返金）', type:'select', options:['請求','返金'] },
   settlement_sent_date:{ label:'精算書発送日', type:'date' },
@@ -1498,8 +1496,8 @@ function powerModalHtml(record){
     '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
     '<div class="sub">対象契約を選んで登録してください。</div>' +
     '<div class="form-grid">' + contractFieldHtml + '</div>' +
-    '<fieldset><legend>停止ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
     '<fieldset><legend>開始ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
+    '<fieldset><legend>停止ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
     '<div class="form-grid">' + renderField('notes', POWER_NOTES_FIELD.notes, record ? record.notes : '') + '</div>' +
     updatedByFieldHtml(record) +
     '<div class="form-msg" id="form-msg"></div>' +
