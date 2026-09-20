@@ -392,7 +392,7 @@ const PARKING_ONLY_FIELDS = {
   notes:{ label:'備考', type:'textarea' },
   application_date:{ label:'申込日', type:'date' },
   contract_execution_date:{ label:'契約締結日', type:'date' },
-  contract_start_date:{ label:'契約開始日', type:'date' },
+  contract_start_date:{ label:'契約開始日', type:'date', full:true },
   storage_consent_form_status:{ label:'保管場所使用承諾書', type:'select', options:['有','無'] },
   storage_consent_arranged_date:{ label:'保管場所使用承諾書手配日', type:'date' },
 };
@@ -405,7 +405,7 @@ const PARKING_NEW_FIELDS = {
   owner_approval_date:{ label:'オーナー承認日', type:'date' },
   screening_result_notified:{ label:'審査結果連絡日', type:'date' },
   contract_doc_collected_date:{ label:'契約書回収日', type:'date' },
-  deposit_confirmed_date:{ label:'契約金入金確認日', type:'date' },
+  deposit_confirmed_date:{ label:'契約金入金確認日', type:'date', full:true },
   agency_fee:{ label:'業務委託料', type:'number' },
   brokerage_fee:{ label:'仲介手数料', type:'number' },
   transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
