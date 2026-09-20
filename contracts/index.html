@@ -156,6 +156,10 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .total-row{font-weight:700; background:var(--navy-soft);}
 .total-row td{border-top:2px solid var(--navy);}
 .field-error{border-color:var(--danger) !important;}
+.field.field-unfilled label{color:var(--orange-ink);}
+.field.field-unfilled input,.field.field-unfilled select,.field.field-unfilled textarea{
+  border-color:var(--orange); background:var(--orange-soft);
+}
 .form-msg{font-size:12.5px; color:var(--danger); margin-top:10px; min-height:1em;}
 
 .detail-tabs{display:flex; gap:6px; margin-bottom:14px;}
@@ -921,7 +925,9 @@ function openContractModal(record){
     const merged = Object.assign({}, record, commonValues);
     document.getElementById('contract-form-body').innerHTML = contractFormBodyHtml(newType, merged);
     wireContractFormBodyEvents(newType);
+    wireEmptyFieldHighlighting();
   });
+  wireEmptyFieldHighlighting();
 }
 
 async function saveContract(record){
@@ -1110,7 +1116,9 @@ function openParkingModal(record){
     const merged = Object.assign({}, record, commonValues);
     document.getElementById('parking-form-body').innerHTML = parkingFormBodyHtml(newType, merged);
     wireParkingFormBodyEvents(newType);
+    wireEmptyFieldHighlighting();
   });
+  wireEmptyFieldHighlighting();
 }
 
 async function saveParking(record){
@@ -1334,6 +1342,7 @@ function openRecordModal(table, fields, title, record, presetContractId){
     if (el) el.addEventListener('input', updateRestorationComputedDisplays);
   });
   updateRestorationComputedDisplays();
+  wireEmptyFieldHighlighting();
 }
 
 // 対象物件（契約）の選択に応じて、①側の情報を読み取り専用で表示する（②の入居予定日・入居確定日・消毒施工など）
@@ -1425,6 +1434,23 @@ function closeModal(){
   document.getElementById('modal-backdrop').hidden = true;
   document.getElementById('modal').innerHTML = '';
   editing = { table:null, id:null };
+}
+
+// 未入力の項目を目立たせ、入力したら通常の色に戻す（⑤漏れチェック以外の全モーダル共通）
+function wireEmptyFieldHighlighting(){
+  const modal = document.getElementById('modal');
+  function update(el){
+    const wrap = el.closest('.field');
+    if (!wrap) return;
+    const empty = !el.value || !el.value.trim();
+    wrap.classList.toggle('field-unfilled', empty);
+  }
+  modal.querySelectorAll('[data-key]').forEach(function(el){
+    if (el.type === 'checkbox') return;
+    update(el);
+    el.addEventListener('input', function(){ update(el); });
+    el.addEventListener('change', function(){ update(el); });
+  });
 }
 document.getElementById('modal-backdrop').addEventListener('click', function(e){
   if (e.target.id !== 'modal-backdrop') return;
@@ -1527,6 +1553,7 @@ function openPowerModal(record, presetContractId){
   const contractSelect = document.querySelector('#modal [data-key="contract_id"]');
   contractSelect.addEventListener('change', updateContractLinkedDisplays);
   updateContractLinkedDisplays();
+  wireEmptyFieldHighlighting();
 }
 
 // =========================================================
@@ -1584,12 +1611,14 @@ function openWorkOrderModal(record){
   if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('equipment_work_orders', record); });
   document.querySelector('#modal [data-key="work_type"]').addEventListener('change', function(e){
     document.getElementById('workorder-form-body').innerHTML = workOrderFormBodyHtml(e.target.value, record);
+    wireEmptyFieldHighlighting();
   });
   ['cost','revenue'].forEach(function(key){
     const el = document.querySelector('#modal [data-key="' + key + '"]');
     if (el) el.addEventListener('input', updateWorkOrderProfitDisplay);
   });
   updateWorkOrderProfitDisplay();
+  wireEmptyFieldHighlighting();
 }
 
 async function saveWorkOrder(record){
