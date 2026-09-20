@@ -1693,8 +1693,8 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>区分</th><th>対象物件</th><th>工事内容</th><th>業者名</th><th>発注日</th><th>完了日</th><th>売上</th><th>原価</th><th>利益</th><th>担当者</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th>区分</th><th>対象物件</th><th>工事内容</th><th>業者名</th><th>入電日</th><th>発注日</th><th>完了日</th><th>売上</th><th>原価</th><th>利益</th><th>担当者</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(r){
     const profit = (r.revenue != null && r.cost != null) ? (Number(r.revenue) - Number(r.cost)) : null;
@@ -1706,6 +1706,7 @@ function renderWorkOrders(){
       '<td>' + esc(r.property_name) + ' ' + esc(r.room_no) + '</td>' +
       '<td>' + esc(r.work_content) + '</td>' +
       '<td>' + esc(r.vendor) + '</td>' +
+      '<td>' + esc(r.inquiry_date) + '</td>' +
       '<td>' + esc(r.order_date) + '</td>' +
       '<td>' + esc(r.completed_date) + '</td>' +
       '<td>' + fmtMoney(r.revenue) + '</td>' +
@@ -1716,7 +1717,7 @@ function renderWorkOrders(){
     '</tr>';
   }).join('');
   const totalRow = '<tr class="total-row">' +
-    '<td colspan="6">合計金額</td>' +
+    '<td colspan="7">合計金額</td>' +
     '<td>' + fmtMoney(totalRevenue) + '</td>' +
     '<td>' + fmtMoney(totalCost) + '</td>' +
     '<td>' + fmtMoney(totalProfit) + '</td>' +
