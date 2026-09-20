@@ -1498,8 +1498,8 @@ function powerModalHtml(record){
     '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
     '<div class="sub">対象契約を選んで登録してください。</div>' +
     '<div class="form-grid">' + contractFieldHtml + '</div>' +
-    '<fieldset><legend>開始ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
     '<fieldset><legend>停止ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
+    '<fieldset><legend>開始ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
     '<div class="form-grid">' + renderField('notes', POWER_NOTES_FIELD.notes, record ? record.notes : '') + '</div>' +
     updatedByFieldHtml(record) +
     '<div class="form-msg" id="form-msg"></div>' +
