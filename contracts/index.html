@@ -1547,7 +1547,7 @@ document.getElementById('export-power').addEventListener('click', function(){
 function powerModalHtml(record, contractId){
   const c = contracts.find(function(x){ return x.id === contractId; });
   const contractFieldHtml =
-    '<div class="field"><label>対象物件</label><div class="field-computed">' + esc(c ? contractLabel(c) : '') + '</div>' +
+    '<div class="field"><label>対象物件</label><div class="field-computed">' + esc(c ? c.property_name : '') + '</div>' +
     '<input type="hidden" data-key="contract_id" value="' + esc(contractId || '') + '"></div>' +
     renderField('room_no_display', POWER_CONTRACT_FIELD.room_no_display, null);
   return '' +
