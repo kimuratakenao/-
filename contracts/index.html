@@ -607,6 +607,23 @@ function esc(s){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
   });
 }
+// 部屋番号・区画番号（room_no）は全角で入力されても半角に変換する
+function toHalfWidth(str){
+  return String(str == null ? '' : str)
+    .replace(/[！-～]/g, function(ch){ return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+    .replace(/　/g, ' ');
+}
+document.getElementById('modal-backdrop').addEventListener('input', function(e){
+  const el = e.target;
+  if (!el || !el.getAttribute || el.getAttribute('data-key') !== 'room_no') return;
+  const converted = toHalfWidth(el.value);
+  if (converted !== el.value){
+    const pos = el.selectionStart;
+    el.value = converted;
+    try { el.setSelectionRange(pos, pos); } catch(err){}
+  }
+});
+
 function daysUntil(dateStr){
   if (!dateStr) return null;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1679,7 +1696,7 @@ function renderWorkOrders(){
       '<td>' + esc(r.work_type) + '</td>' +
       '<td>' + esc(r.property_name) + ' ' + esc(r.room_no) + '</td>' +
       '<td>' + esc(r.work_content) + '</td>' +
-      '<td>' + esc(r.work_type === '自社物件' ? '' : r.vendor) + '</td>' +
+      '<td>' + esc(r.vendor) + '</td>' +
       '<td>' + esc(r.order_date) + '</td>' +
       '<td>' + esc(r.completed_date) + '</td>' +
       '<td>' + fmtMoney(r.revenue) + '</td>' +
