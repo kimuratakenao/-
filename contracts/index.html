@@ -364,7 +364,10 @@ const UPDATED_BY_FIELD = {
   updated_by:{ label:'最終更新者', type:'text', required:true, suggest:'name' },
 };
 function updatedByFieldHtml(record){
-  return '<div class="form-grid">' + renderField('updated_by', UPDATED_BY_FIELD.updated_by, '') + '</div>';
+  const prevHtml = (record && record.updated_by)
+    ? '<div class="field"><label>前回更新者</label><div class="field-computed">' + esc(record.updated_by) + '</div></div>'
+    : '';
+  return '<div class="form-grid">' + prevHtml + renderField('updated_by', UPDATED_BY_FIELD.updated_by, '') + '</div>';
 }
 
 // 登録区分の隣に表示する担当者
