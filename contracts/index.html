@@ -321,7 +321,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   </section>
 
   <section class="panel" id="panel-power" hidden>
-    <div class="note-box">契約に紐づく通電・停止の記録です。契約を選んで登録します。1契約に複数件登録することもできます。</div>
+    <div class="note-box">契約に紐づく通電・停止の記録です。①の契約ごとに行が自動で並ぶので、対象の行の「編集」から登録してください。</div>
     <div class="toolbar">
       <input type="text" id="search-power" placeholder="物件名・部屋番号で検索">
       <select id="closed-filter-power">
@@ -331,7 +331,6 @@ tbody tr.row-highlight{background:var(--orange-soft);}
       </select>
       <div class="spacer"></div>
       <button class="btn secondary" id="export-power">CSV出力</button>
-      <button class="btn" id="add-power">＋ 新規登録</button>
     </div>
     <div class="table-scroll"><table id="table-power"><thead></thead><tbody></tbody></table></div>
   </section>
@@ -1533,21 +1532,21 @@ document.getElementById('table-power').addEventListener('click', function(e){
 });
 document.getElementById('search-power').addEventListener('input', renderPower);
 document.getElementById('closed-filter-power').addEventListener('change', renderPower);
-document.getElementById('add-power').addEventListener('click', function(){ openPowerModal(null); });
 document.getElementById('export-power').addEventListener('click', function(){
   const cols = Object.keys(POWER_FIELDS);
   const rows = filteredPower().map(function(row){ return Object.assign({}, row.power || {}, { contract_id: powerContractLabel(row.contract) }); });
   exportCsv('通電一覧', rows, cols, function(c){ return POWER_FIELDS[c].label; });
 });
 
-function powerModalHtml(record){
-  const selectedId = record ? record.contract_id : null;
-  const contractFieldHtml = '<div class="field"><label>対象物件 <span class="req">*</span></label>' +
-    '<select data-key="contract_id">' + contractOptionsHtml(selectedId) + '</select></div>' +
+function powerModalHtml(record, contractId){
+  const c = contracts.find(function(x){ return x.id === contractId; });
+  const contractFieldHtml =
+    '<div class="field"><label>対象物件</label><div class="field-computed">' + esc(c ? contractLabel(c) : '') + '</div>' +
+    '<input type="hidden" data-key="contract_id" value="' + esc(contractId || '') + '"></div>' +
     renderField('room_no_display', POWER_CONTRACT_FIELD.room_no_display, null);
   return '' +
     '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
-    '<div class="sub">対象契約を選んで登録してください。</div>' +
+    '<div class="sub">①の一覧の「編集」から開いた契約に対して登録します。</div>' +
     '<div class="form-grid">' + contractFieldHtml + '</div>' +
     '<fieldset><legend>開始ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
     '<fieldset><legend>停止ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
@@ -1566,19 +1565,15 @@ function powerModalHtml(record){
 
 function openPowerModal(record, presetContractId){
   editing = { table:'power_supply_records', id: record ? record.id : null };
-  document.getElementById('modal').innerHTML = powerModalHtml(record);
+  const contractId = record ? record.contract_id : presetContractId;
+  document.getElementById('modal').innerHTML = powerModalHtml(record, contractId);
   document.getElementById('modal-backdrop').hidden = false;
-  if (!record && presetContractId){
-    document.querySelector('#modal [data-key="contract_id"]').value = presetContractId;
-  }
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   document.getElementById('modal-save').addEventListener('click', function(){ saveRecord('power_supply_records', POWER_FIELDS, record); });
   const delBtn = document.getElementById('modal-delete');
   if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('power_supply_records', record.id); });
   const closeBtn = document.getElementById('modal-toggle-closed');
   if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('power_supply_records', record); });
-  const contractSelect = document.querySelector('#modal [data-key="contract_id"]');
-  contractSelect.addEventListener('change', updateContractLinkedDisplays);
   updateContractLinkedDisplays();
   wireEmptyFieldHighlighting();
 }
