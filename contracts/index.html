@@ -321,7 +321,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   </section>
 
   <section class="panel" id="panel-power" hidden>
-    <div class="note-box">契約に紐づく通電・停止の記録です。①の契約ごとに行が自動で並ぶので、対象の行の「編集」から登録してください。</div>
+    <div class="note-box">契約に紐づく通電・停止の記録です。①が解約かつ退去立会日が入力されると行が表示されます。対象の行の「編集」から登録してください。</div>
     <div class="toolbar">
       <input type="text" id="search-power" placeholder="物件名・部屋番号で検索">
       <select id="closed-filter-power">
@@ -542,7 +542,7 @@ const POWER_NEW_FIELDS = {
 };
 // 停止ツール（通電停止）：①契約の入居確定日を参照
 const POWER_MOVEOUT_FIELDS = {
-  move_in_confirmed_display:{ label:'入居日', type:'computed' },
+  latest_move_in_confirmed_display:{ label:'入居日', type:'computed' },
   power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
   power_off_request_date:{ label:'通電停止依頼日', type:'date', full:true },
   power_off_date:{ label:'通電停止日', type:'date' },
@@ -1376,9 +1376,15 @@ function updateContractLinkedDisplays(){
   const select = document.querySelector('#modal [data-key="contract_id"]');
   if (!select) return;
   const c = contracts.find(function(x){ return x.id === select.value; });
+  // ⑦停止ツールの入居日：同じ物件・部屋番号の契約（新しい入居者）の入居確定日を拾う（解約の契約行そのものには入居確定日がない場合があるため）
+  const latestMoveIn = c ? contracts
+    .filter(function(x){ return x.property_name === c.property_name && x.room_no === c.room_no && x.record_type === '契約' && x.move_in_confirmed_date; })
+    .sort(function(a, b){ return (a.move_in_confirmed_date || '') > (b.move_in_confirmed_date || '') ? -1 : 1; })[0]
+    : null;
   const map = {
     move_in_scheduled_display: c ? c.contract_date : null,
     move_in_confirmed_display: c ? c.move_in_confirmed_date : null,
+    latest_move_in_confirmed_display: latestMoveIn ? latestMoveIn.move_in_confirmed_date : null,
     disinfection_display: c ? c.disinfection_status : null,
     move_out_received_display: c ? c.move_out_notice_date : null,
     move_out_date_display: c ? c.move_out_date : null,
@@ -1494,7 +1500,7 @@ function filteredPower(){
   const search = document.getElementById('search-power').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-power').value;
   return contracts
-    .filter(function(c){ return c.record_type === '契約' || (c.record_type === '解約' && c.move_out_walkthrough_date); })
+    .filter(function(c){ return c.record_type === '解約' && c.move_out_walkthrough_date; })
     .map(function(c){ return { contract:c, power: latestByContract(powerRecords, c.id) }; })
     .filter(function(row){
       const hay = powerContractLabel(row.contract).toLowerCase();
