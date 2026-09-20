@@ -599,7 +599,7 @@ let restorations = [];
 let workOrders = [];
 let parkingContracts = [];
 let powerRecords = [];
-let sort = { contracts: { col:'property_name', dir:1 }, parking: { col:'property_name', dir:1 } };
+let sort = { contracts: { col:'created_at', dir:1 }, parking: { col:'created_at', dir:1 } };
 let editing = { table:null, id:null };
 
 // ---- helpers ----
@@ -680,12 +680,12 @@ async function checkNotStale(table, record){
 // ---- data ----
 async function fetchAll(){
   const [c, i, r, w, p, pw] = await Promise.all([
-    sb.from('contracts').select('*').order('property_name').order('room_no'),
-    sb.from('move_in_inspections').select('*').order('created_at', { ascending:false }),
-    sb.from('restoration_orders').select('*').order('created_at', { ascending:false }),
-    sb.from('equipment_work_orders').select('*').order('created_at', { ascending:false }),
-    sb.from('parking_contracts').select('*').order('property_name').order('room_no'),
-    sb.from('power_supply_records').select('*').order('created_at', { ascending:false }),
+    sb.from('contracts').select('*').order('created_at'),
+    sb.from('move_in_inspections').select('*').order('created_at'),
+    sb.from('restoration_orders').select('*').order('created_at'),
+    sb.from('equipment_work_orders').select('*').order('created_at'),
+    sb.from('parking_contracts').select('*').order('created_at'),
+    sb.from('power_supply_records').select('*').order('created_at'),
   ]);
   if (c.error){ setConnNote('読み込みエラー: ' + c.error.message, true); return; }
   contracts = c.data || [];
@@ -1687,7 +1687,7 @@ function filteredWorkOrders(){
       const matchesType = !typeFilter || r.work_type === typeFilter;
       return matchesSearch && matchesMonth && matchesType && matchesClosedFilter(closedFilter, r.is_closed);
     })
-    .sort(function(a, b){ return (b.created_at || '') > (a.created_at || '') ? 1 : -1; });
+    .sort(function(a, b){ return (a.created_at || '') > (b.created_at || '') ? 1 : -1; });
 }
 
 function renderWorkOrders(){
