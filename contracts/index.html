@@ -613,15 +613,24 @@ function toHalfWidth(str){
     .replace(/[！-～]/g, function(ch){ return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
     .replace(/　/g, ' ');
 }
-document.getElementById('modal-backdrop').addEventListener('input', function(e){
-  const el = e.target;
-  if (!el || !el.getAttribute || el.getAttribute('data-key') !== 'room_no') return;
+function normalizeRoomNoInput(el){
   const converted = toHalfWidth(el.value);
   if (converted !== el.value){
     const pos = el.selectionStart;
     el.value = converted;
     try { el.setSelectionRange(pos, pos); } catch(err){}
   }
+}
+document.getElementById('modal-backdrop').addEventListener('input', function(e){
+  const el = e.target;
+  if (!el || !el.getAttribute || el.getAttribute('data-key') !== 'room_no') return;
+  if (e.isComposing) return; // IME変換中に値を書き換えると文字が連続で増える不具合になるため、変換確定後まで待つ
+  normalizeRoomNoInput(el);
+});
+document.getElementById('modal-backdrop').addEventListener('compositionend', function(e){
+  const el = e.target;
+  if (!el || !el.getAttribute || el.getAttribute('data-key') !== 'room_no') return;
+  normalizeRoomNoInput(el);
 });
 
 function daysUntil(dateStr){
