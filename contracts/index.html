@@ -584,6 +584,7 @@ const WORKORDER_VENDOR_FIELDS = {
   entered_by:{ label:'入力者', type:'text', suggest:'name' },
   vendor_requester:{ label:'業者依頼担当者', type:'text', suggest:'name' },
   vendor_orderer:{ label:'業者発注担当者', type:'text', suggest:'name' },
+  site_staff:{ label:'現場担当者', type:'text', suggest:'name' },
   invoice_filed:{ label:'請求書格納日', type:'date' },
   billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
   payment_method:{ label:'支払い方法', type:'text' },
@@ -697,7 +698,7 @@ async function fetchAll(){
   renderAll();
 }
 
-const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer','power_on_staff','power_off_staff'];
+const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer','site_staff','power_on_staff','power_off_staff'];
 const VENDOR_FIELDS = ['vendor','billing_target'];
 
 function renderDatalists(){
@@ -1712,7 +1713,7 @@ function renderWorkOrders(){
       '<td>' + fmtMoney(r.revenue) + '</td>' +
       '<td>' + fmtMoney(r.cost) + '</td>' +
       '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
-      '<td>' + esc(r.work_type === '自社物件' ? r.staff : '') + '</td>' +
+      '<td>' + esc(r.site_staff) + '</td>' +
       '<td class="row-actions"><button data-action="edit-workorder" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
