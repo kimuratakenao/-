@@ -645,6 +645,7 @@ let powerRecords = [];
 let complaints = [];
 let sort = { contracts: { col:'created_at', dir:1 }, parking: { col:'created_at', dir:1 } };
 let editing = { table:null, id:null };
+let returnToTab = null; // モーダルを閉じたら遷移前のタブに戻す（⑧→④「設備工事へ反映」用）
 
 // ---- helpers ----
 function esc(s){
@@ -775,15 +776,16 @@ function renderAll(){
 }
 
 // ---- tab switching ----
-document.querySelectorAll('.tab-btn').forEach(function(btn){
-  btn.addEventListener('click', function(){
-    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-    btn.classList.add('active');
-    const tab = btn.getAttribute('data-tab');
-    ['contracts','inspections','restorations','workorders','gaps','parking','power','complaints'].forEach(function(t){
-      document.getElementById('panel-' + t).hidden = t !== tab;
-    });
+function switchToTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
+  if (btn) btn.classList.add('active');
+  ['contracts','inspections','restorations','workorders','gaps','parking','power','complaints'].forEach(function(t){
+    document.getElementById('panel-' + t).hidden = t !== tab;
   });
+}
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){ switchToTab(btn.getAttribute('data-tab')); });
 });
 
 // =========================================================
@@ -1523,6 +1525,11 @@ function closeModal(){
   document.getElementById('modal-backdrop').hidden = true;
   document.getElementById('modal').innerHTML = '';
   editing = { table:null, id:null };
+  if (returnToTab){
+    const tab = returnToTab;
+    returnToTab = null;
+    switchToTab(tab);
+  }
 }
 
 // 未入力の項目を目立たせ、入力したら通常の色に戻す（⑤漏れチェック以外の全モーダル共通）
@@ -1840,6 +1847,7 @@ function complaintModalHtml(record){
         '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
         (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
         closeButtonHtml(record) +
+        (record ? '<button class="btn secondary" id="modal-to-workorder">設備工事へ反映</button>' : '') +
       '</div>' +
       '<button class="btn save" id="modal-save">保存</button>' +
     '</div>';
@@ -1855,6 +1863,8 @@ function openComplaintModal(record){
   if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('complaints', record.id); });
   const closeBtn = document.getElementById('modal-toggle-closed');
   if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('complaints', record); });
+  const woBtn = document.getElementById('modal-to-workorder');
+  if (woBtn) woBtn.addEventListener('click', function(){ goToWorkOrderFromComplaint(record); });
   wireEmptyFieldHighlighting();
 }
 
@@ -1888,17 +1898,15 @@ function renderComplaints(){
       '<td>' + esc(r.content) + '</td>' +
       '<td>' + esc(r.status) + '</td>' +
       '<td>' + esc(r.handled_by) + '</td>' +
-      '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button>' +
-        '<button data-action="to-workorder" data-id="' + r.id + '">④設備工事へ</button></td>' +
+      '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
+// クレーム編集画面の「設備工事へ反映」から遷移した場合、その④の編集を閉じたら⑧に戻る
 function goToWorkOrderFromComplaint(complaint){
-  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-  document.querySelector('.tab-btn[data-tab="workorders"]').classList.add('active');
-  ['contracts','inspections','restorations','workorders','gaps','parking','power','complaints'].forEach(function(t){
-    document.getElementById('panel-' + t).hidden = t !== 'workorders';
-  });
+  closeModal();
+  switchToTab('workorders');
+  returnToTab = 'complaints';
   openWorkOrderModal(null, {
     property_name: complaint.property_name,
     room_no: complaint.room_no,
@@ -1907,9 +1915,7 @@ function goToWorkOrderFromComplaint(complaint){
 }
 document.getElementById('table-complaints').addEventListener('click', function(e){
   const editBtn = e.target.closest('button[data-action="edit-complaint"]');
-  if (editBtn){ openComplaintModal(complaints.find(function(r){ return r.id === editBtn.getAttribute('data-id'); })); return; }
-  const woBtn = e.target.closest('button[data-action="to-workorder"]');
-  if (woBtn){ goToWorkOrderFromComplaint(complaints.find(function(r){ return r.id === woBtn.getAttribute('data-id'); })); }
+  if (editBtn) openComplaintModal(complaints.find(function(r){ return r.id === editBtn.getAttribute('data-id'); }));
 });
 document.getElementById('search-complaints').addEventListener('input', renderComplaints);
 document.getElementById('status-filter-complaints').addEventListener('change', renderComplaints);
