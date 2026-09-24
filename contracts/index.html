@@ -591,7 +591,7 @@ const WORKORDER_VENDOR_FIELDS = {
   site_staff:{ label:'現場担当者', type:'text', suggest:'name' },
   invoice_filed:{ label:'請求書格納日', type:'date' },
   billing_target:{ label:'請求先', type:'text', suggest:'vendor' },
-  payment_method:{ label:'支払い方法', type:'text' },
+  payment_method:{ label:'支払い方法', type:'select', options:['送金相殺','銀行振込'] },
   payment_date:{ label:'入金日', type:'date' },
 };
 // 区分が「自社物件」のときの詳細項目：オーナー物件の詳細と同じ内容にする
