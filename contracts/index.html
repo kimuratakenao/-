@@ -184,7 +184,10 @@ tbody tr.row-highlight{background:var(--orange-soft);}
       <div class="brand">契約進捗・入退去管理アプリ</div>
       <div class="tagline">事務（契約・解約）と現場（点検・原状回復・通電）を1つの契約データにまとめ、抜け漏れを検知します</div>
     </div>
-    <div class="conn-note" id="conn-note"></div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="btn secondary" id="export-all">全タブ一括CSV出力</button>
+      <div class="conn-note" id="conn-note"></div>
+    </div>
   </header>
 
   <div class="tabs">
@@ -750,7 +753,7 @@ function matchesClosedFilter(filterValue, isClosed){
   return !isClosed;
 }
 
-function filteredContracts(){
+function filteredContracts(all){
   const search = document.getElementById('search-contracts').value.trim().toLowerCase();
   const monthFilter = document.getElementById('month-filter-contracts').value;
   const statusFilter = document.getElementById('status-filter-contracts').value;
@@ -758,6 +761,7 @@ function filteredContracts(){
   const closedFilter = document.getElementById('closed-filter-contracts').value;
   let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
   list = list.filter(function(r){
+    if (all) return true;
     const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name].join(' ').toLowerCase();
     const matchesMonth = !monthFilter || [r.contract_date, r.move_in_confirmed_date, r.move_out_date].some(function(d){ return d && d.slice(0,7) === monthFilter; });
     return (!search || hay.indexOf(search) !== -1) && matchesMonth && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
@@ -819,9 +823,10 @@ document.getElementById('status-filter-contracts').addEventListener('change', re
 document.getElementById('type-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('closed-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('add-contract').addEventListener('click', function(){ openContractModal(null); });
-document.getElementById('export-contracts').addEventListener('click', function(){
-  exportCsv('契約進捗表', filteredContracts(), CONTRACT_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label; });
-});
+function exportContractsCsv(all){
+  exportCsv('契約進捗表', filteredContracts(all), CONTRACT_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label; });
+}
+document.getElementById('export-contracts').addEventListener('click', function(){ exportContractsCsv(false); });
 
 function selectHtml(key, f, val){
   const req = f.required ? ' <span class="req">*</span>' : '';
@@ -1000,13 +1005,14 @@ function parkingStatus(r){
   return '申込・審査中';
 }
 
-function filteredParking(){
+function filteredParking(all){
   const search = document.getElementById('search-parking').value.trim().toLowerCase();
   const statusFilter = document.getElementById('status-filter-parking').value;
   const typeFilter = document.getElementById('type-filter-parking').value;
   const closedFilter = document.getElementById('closed-filter-parking').value;
   let list = parkingContracts.map(function(r){ return Object.assign({}, r, { status: parkingStatus(r) }); });
   list = list.filter(function(r){
+    if (all) return true;
     const hay = [r.property_name, r.room_no, r.contract_name].join(' ').toLowerCase();
     return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
   });
@@ -1062,9 +1068,10 @@ document.getElementById('status-filter-parking').addEventListener('change', rend
 document.getElementById('type-filter-parking').addEventListener('change', renderParking);
 document.getElementById('closed-filter-parking').addEventListener('change', renderParking);
 document.getElementById('add-parking').addEventListener('click', function(){ openParkingModal(null); });
-document.getElementById('export-parking').addEventListener('click', function(){
-  exportCsv('駐車場', filteredParking(), PARKING_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label; });
-});
+function exportParkingCsv(all){
+  exportCsv('駐車場', filteredParking(all), PARKING_COLS, function(c){ return CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label; });
+}
+document.getElementById('export-parking').addEventListener('click', function(){ exportParkingCsv(false); });
 
 function parkingFormBodyHtml(recordType, record){
   const basicFields = recordType === '解約'
@@ -1198,13 +1205,14 @@ function siteStatus(record, fieldsObj, excludeKeys){
   if (!record) return '未登録';
   return blankFieldLabels(record, fieldsObj, excludeKeys).length === 0 ? '完了' : '進行中';
 }
-function filteredInspections(){
+function filteredInspections(all){
   const search = document.getElementById('search-inspections').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-inspections').value;
   return contracts
     .filter(function(c){ return c.record_type === '契約' && (c.contract_date || c.move_in_confirmed_date); })
     .map(function(c){ return { contract:c, inspection: latestByContract(inspections, c.id) }; })
     .filter(function(row){
+      if (all) return true;
       const hay = contractLabel(row.contract).toLowerCase();
       return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.inspection && row.inspection.is_closed);
     });
@@ -1245,16 +1253,17 @@ document.getElementById('table-inspections').addEventListener('click', function(
 document.getElementById('search-inspections').addEventListener('input', renderInspections);
 document.getElementById('closed-filter-inspections').addEventListener('change', renderInspections);
 document.getElementById('add-inspection').addEventListener('click', function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null); });
-document.getElementById('export-inspections').addEventListener('click', function(){
+function exportInspectionsCsv(all){
   const cols = Object.keys(INSPECTION_FIELDS);
-  const rows = filteredInspections().map(function(row){ return Object.assign({}, row.inspection || {}, { contract_id: contractLabel(row.contract) }); });
+  const rows = filteredInspections(all).map(function(row){ return Object.assign({}, row.inspection || {}, { contract_id: contractLabel(row.contract) }); });
   exportCsv('入居前点検', rows, cols, function(c){ return INSPECTION_FIELDS[c].label; });
-});
+}
+document.getElementById('export-inspections').addEventListener('click', function(){ exportInspectionsCsv(false); });
 
 // =========================================================
 // ③ 退去原状回復
 // =========================================================
-function filteredRestorations(){
+function filteredRestorations(all){
   const search = document.getElementById('search-restorations').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-restorations').value;
   const monthFilter = document.getElementById('month-filter-restorations').value;
@@ -1262,6 +1271,7 @@ function filteredRestorations(){
     .filter(function(c){ return c.record_type === '解約' && c.move_out_date; })
     .map(function(c){ return { contract:c, restoration: latestByContract(restorations, c.id) }; })
     .filter(function(row){
+      if (all) return true;
       const hay = contractLabel(row.contract).toLowerCase();
       const matchesMonth = !monthFilter || (row.contract.move_out_date && row.contract.move_out_date.slice(0,7) === monthFilter);
       return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.restoration && row.restoration.is_closed) && matchesMonth;
@@ -1318,11 +1328,12 @@ document.getElementById('search-restorations').addEventListener('input', renderR
 document.getElementById('month-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('closed-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null); });
-document.getElementById('export-restorations').addEventListener('click', function(){
+function exportRestorationsCsv(all){
   const cols = Object.keys(RESTORATION_FIELDS);
-  const rows = filteredRestorations().map(function(row){ return Object.assign({}, row.restoration || {}, { contract_id: contractLabel(row.contract) }); });
+  const rows = filteredRestorations(all).map(function(row){ return Object.assign({}, row.restoration || {}, { contract_id: contractLabel(row.contract) }); });
   exportCsv('退去・原状回復工事', rows, cols, function(c){ return RESTORATION_FIELDS[c].label; });
-});
+}
+document.getElementById('export-restorations').addEventListener('click', function(){ exportRestorationsCsv(false); });
 
 // ---- generic record modal (inspections / restorations) ----
 function openRecordModal(table, fields, title, record, presetContractId){
@@ -1499,13 +1510,14 @@ document.getElementById('modal-backdrop').addEventListener('click', function(e){
 // =========================================================
 // ⑦ 通電一覧（①の契約に紐づく通電・停止記録）
 // =========================================================
-function filteredPower(){
+function filteredPower(all){
   const search = document.getElementById('search-power').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-power').value;
   return contracts
     .filter(function(c){ return c.record_type === '解約' && c.move_out_walkthrough_date; })
     .map(function(c){ return { contract:c, power: latestByContract(powerRecords, c.id) }; })
     .filter(function(row){
+      if (all) return true;
       const hay = powerContractLabel(row.contract).toLowerCase();
       return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.power && row.power.is_closed);
     });
@@ -1541,11 +1553,12 @@ document.getElementById('table-power').addEventListener('click', function(e){
 });
 document.getElementById('search-power').addEventListener('input', renderPower);
 document.getElementById('closed-filter-power').addEventListener('change', renderPower);
-document.getElementById('export-power').addEventListener('click', function(){
+function exportPowerCsv(all){
   const cols = Object.keys(POWER_FIELDS);
-  const rows = filteredPower().map(function(row){ return Object.assign({}, row.power || {}, { contract_id: powerContractLabel(row.contract) }); });
+  const rows = filteredPower(all).map(function(row){ return Object.assign({}, row.power || {}, { contract_id: powerContractLabel(row.contract) }); });
   exportCsv('通電一覧', rows, cols, function(c){ return POWER_FIELDS[c].label; });
-});
+}
+document.getElementById('export-power').addEventListener('click', function(){ exportPowerCsv(false); });
 
 function powerModalHtml(record, contractId){
   const c = contracts.find(function(x){ return x.id === contractId; });
@@ -1678,13 +1691,14 @@ async function saveWorkOrder(record){
   await fetchAll();
 }
 
-function filteredWorkOrders(){
+function filteredWorkOrders(all){
   const search = document.getElementById('search-workorders').value.trim().toLowerCase();
   const monthFilter = document.getElementById('month-filter-workorders').value;
   const typeFilter = document.getElementById('type-filter-workorders').value;
   const closedFilter = document.getElementById('closed-filter-workorders').value;
   return workOrders
     .filter(function(r){
+      if (all) return true;
       const hay = ((r.property_name || '') + ' ' + (r.room_no || '') + ' ' + (r.work_content || '')).toLowerCase();
       const matchesSearch = !search || hay.indexOf(search) !== -1;
       const matchesMonth = !monthFilter || (r.completed_date && r.completed_date.slice(0,7) === monthFilter);
@@ -1740,11 +1754,24 @@ document.getElementById('month-filter-workorders').addEventListener('change', re
 document.getElementById('type-filter-workorders').addEventListener('change', renderWorkOrders);
 document.getElementById('closed-filter-workorders').addEventListener('change', renderWorkOrders);
 document.getElementById('add-workorder').addEventListener('click', function(){ openWorkOrderModal(null); });
-document.getElementById('export-workorders').addEventListener('click', function(){
-  const allFields = Object.assign({}, WORKORDER_TYPE_FIELDS, UNIT_STATUS_FIELD, WORKORDER_COMMON_FIELDS, WORKORDER_VENDOR_FIELDS, WORKORDER_INHOUSE_FIELDS, UPDATED_BY_FIELD);
-  delete allFields.profit_display;
-  const cols = Object.keys(allFields);
-  exportCsv('設備工事_自社施工', filteredWorkOrders(), cols, function(c){ return allFields[c].label; });
+function exportWorkOrdersCsv(all){
+  const fields = Object.assign({}, WORKORDER_TYPE_FIELDS, UNIT_STATUS_FIELD, WORKORDER_COMMON_FIELDS, WORKORDER_VENDOR_FIELDS, WORKORDER_INHOUSE_FIELDS, UPDATED_BY_FIELD);
+  delete fields.profit_display;
+  const cols = Object.keys(fields);
+  exportCsv('設備工事_自社施工', filteredWorkOrders(all), cols, function(c){ return fields[c].label; });
+}
+document.getElementById('export-workorders').addEventListener('click', function(){ exportWorkOrdersCsv(false); });
+
+document.getElementById('export-all').addEventListener('click', function(){
+  const jobs = [
+    function(){ exportContractsCsv(true); },
+    function(){ exportInspectionsCsv(true); },
+    function(){ exportRestorationsCsv(true); },
+    function(){ exportWorkOrdersCsv(true); },
+    function(){ exportParkingCsv(true); },
+    function(){ exportPowerCsv(true); }
+  ];
+  jobs.forEach(function(job, i){ setTimeout(job, i * 300); });
 });
 
 // =========================================================
