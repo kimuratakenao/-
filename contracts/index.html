@@ -1686,10 +1686,17 @@ function updateWorkOrderProfitDisplay(){
   out.textContent = (isNaN(cost) || isNaN(revenue)) ? '—' : (revenue - cost).toLocaleString('ja-JP') + '円';
 }
 
-function openWorkOrderModal(record){
+function openWorkOrderModal(record, preset){
   editing = { table:'equipment_work_orders', id: record ? record.id : null };
   document.getElementById('modal').innerHTML = workOrderModalHtml(record);
   document.getElementById('modal-backdrop').hidden = false;
+  if (preset){
+    ['property_name','room_no','inquiry_date'].forEach(function(key){
+      if (preset[key] == null) return;
+      const el = document.querySelector('#modal [data-key="' + key + '"]');
+      if (el) el.value = preset[key];
+    });
+  }
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   document.getElementById('modal-save').addEventListener('click', function(){ saveWorkOrder(record); });
   const delBtn = document.getElementById('modal-delete');
@@ -1881,13 +1888,28 @@ function renderComplaints(){
       '<td>' + esc(r.content) + '</td>' +
       '<td>' + esc(r.status) + '</td>' +
       '<td>' + esc(r.handled_by) + '</td>' +
-      '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
+      '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button>' +
+        '<button data-action="to-workorder" data-id="' + r.id + '">④設備工事へ</button></td>' +
     '</tr>';
   }).join('');
 }
+function goToWorkOrderFromComplaint(complaint){
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelector('.tab-btn[data-tab="workorders"]').classList.add('active');
+  ['contracts','inspections','restorations','workorders','gaps','parking','power','complaints'].forEach(function(t){
+    document.getElementById('panel-' + t).hidden = t !== 'workorders';
+  });
+  openWorkOrderModal(null, {
+    property_name: complaint.property_name,
+    room_no: complaint.room_no,
+    inquiry_date: complaint.received_date,
+  });
+}
 document.getElementById('table-complaints').addEventListener('click', function(e){
-  const btn = e.target.closest('button[data-action="edit-complaint"]');
-  if (btn) openComplaintModal(complaints.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+  const editBtn = e.target.closest('button[data-action="edit-complaint"]');
+  if (editBtn){ openComplaintModal(complaints.find(function(r){ return r.id === editBtn.getAttribute('data-id'); })); return; }
+  const woBtn = e.target.closest('button[data-action="to-workorder"]');
+  if (woBtn){ goToWorkOrderFromComplaint(complaints.find(function(r){ return r.id === woBtn.getAttribute('data-id'); })); }
 });
 document.getElementById('search-complaints').addEventListener('input', renderComplaints);
 document.getElementById('status-filter-complaints').addEventListener('change', renderComplaints);
