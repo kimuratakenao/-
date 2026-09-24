@@ -803,6 +803,16 @@ function matchesClosedFilter(filterValue, isClosed){
   return !isClosed;
 }
 
+// トップページの既定の並び順（列見出しをクリックして明示的に並び替えていない状態）は、
+// 新規=申込日順、解約=退去申出日順。①⑥（sort.col==='created_at'が初期値）はこのルールで比較し、
+// 列見出しクリックで別の列が選ばれたらその列の値で通常通り比較する。
+function contractSortValue(r, col){
+  if (col === 'created_at'){
+    return r.record_type === '解約' ? r.move_out_notice_date : r.application_date;
+  }
+  return r[col];
+}
+
 function filteredContracts(all){
   const search = document.getElementById('search-contracts').value.trim().toLowerCase();
   const monthFilter = document.getElementById('month-filter-contracts').value;
@@ -818,7 +828,7 @@ function filteredContracts(all){
   });
   const s = sort.contracts;
   list.sort(function(a, b){
-    const av = a[s.col], bv = b[s.col];
+    const av = contractSortValue(a, s.col), bv = contractSortValue(b, s.col);
     if (av == null && bv == null) return 0;
     if (av == null) return 1;
     if (bv == null) return -1;
@@ -1068,7 +1078,7 @@ function filteredParking(all){
   });
   const s = sort.parking;
   list.sort(function(a, b){
-    const av = a[s.col], bv = b[s.col];
+    const av = contractSortValue(a, s.col), bv = contractSortValue(b, s.col);
     if (av == null && bv == null) return 0;
     if (av == null) return 1;
     if (bv == null) return -1;
@@ -1889,7 +1899,13 @@ function filteredComplaints(all){
       const matchesStatus = !statusFilter || r.status === statusFilter;
       return matchesSearch && matchesStatus && matchesClosedFilter(closedFilter, r.is_closed);
     })
-    .sort(function(a, b){ return (a.created_at || '') > (b.created_at || '') ? 1 : -1; });
+    .sort(function(a, b){
+      const av = a.received_date, bv = b.received_date;
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return av > bv ? 1 : av < bv ? -1 : 0;
+    });
 }
 
 function renderComplaints(){
