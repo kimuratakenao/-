@@ -1,9 +1,10 @@
 // Vercel Routing Middleware (framework-agnostic — no Next.js in this project).
-// Basic Auth using a shared training passphrase, hardcoded per explicit request
-// (this deployment has no env vars — the passphrase is shared with all participants).
+// Basic Auth using a shared department passphrase, stored as Vercel project
+// environment variables (BASIC_AUTH_USER / BASIC_AUTH_PASSWORD) so the
+// credentials never appear in the git history.
 
-const BASIC_AUTH_USER = 'okamurahome';
-const BASIC_AUTH_PASSWORD = '20260917';
+const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;
+const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 
 function unauthorized(): Response {
   return new Response('Authentication required', {
@@ -15,6 +16,10 @@ function unauthorized(): Response {
 }
 
 export default function middleware(request: Request): Response | undefined {
+  if (!BASIC_AUTH_USER || !BASIC_AUTH_PASSWORD) {
+    return unauthorized();
+  }
+
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     return unauthorized();
