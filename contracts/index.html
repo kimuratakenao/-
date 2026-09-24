@@ -115,6 +115,10 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .row-actions button{background:none; border:none; cursor:pointer; color:var(--navy-ink); font-size:12px; text-decoration:underline; padding:0; margin-right:8px;}
 .empty-note{padding:20px; text-align:center; color:var(--ink-soft); font-size:13px;}
 .table-scroll{overflow-x:auto;}
+/* 文章が長い列（クレームの内容・対応内容など）は横に伸ばさず、折り返して縦に伸ばす */
+.wrap-cell{white-space:normal; max-width:260px; min-width:160px; word-break:break-word; vertical-align:top;}
+.moved-badge{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; background:var(--ok-soft); color:var(--ok);}
+.moved-badge.not-moved{background:var(--surface-2); color:var(--ink-soft);}
 
 .gap-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
 .gap-item{
@@ -646,6 +650,7 @@ let complaints = [];
 let sort = { contracts: { col:'created_at', dir:1 }, parking: { col:'created_at', dir:1 } };
 let editing = { table:null, id:null };
 let returnToTab = null; // モーダルを閉じたら遷移前のタブに戻す（⑧→④「設備工事へ反映」用）
+let pendingComplaintTransfer = null; // ⑧から④に反映した新規保存が成功したら、元のクレームに移行済みフラグを立てる
 
 // ---- helpers ----
 function esc(s){
@@ -1525,6 +1530,7 @@ function closeModal(){
   document.getElementById('modal-backdrop').hidden = true;
   document.getElementById('modal').innerHTML = '';
   editing = { table:null, id:null };
+  pendingComplaintTransfer = null;
   if (returnToTab){
     const tab = returnToTab;
     returnToTab = null;
@@ -1698,7 +1704,7 @@ function openWorkOrderModal(record, preset){
   document.getElementById('modal').innerHTML = workOrderModalHtml(record);
   document.getElementById('modal-backdrop').hidden = false;
   if (preset){
-    ['property_name','room_no','inquiry_date'].forEach(function(key){
+    ['property_name','room_no','resident_name','resident_contact','work_content','inquiry_date'].forEach(function(key){
       if (preset[key] == null) return;
       const el = document.querySelector('#modal [data-key="' + key + '"]');
       if (el) el.value = preset[key];
@@ -1744,6 +1750,9 @@ async function saveWorkOrder(record){
   if (record){ ({ error } = await sb.from('equipment_work_orders').update(payload).eq('id', record.id)); }
   else { ({ error } = await sb.from('equipment_work_orders').insert(payload)); }
   if (error){ msg.textContent = '保存に失敗しました: ' + error.message; return; }
+  if (!record && pendingComplaintTransfer){
+    await sb.from('complaints').update({ moved_to_workorder: true }).eq('id', pendingComplaintTransfer);
+  }
   closeModal();
   await fetchAll();
 }
@@ -1887,16 +1896,20 @@ function renderComplaints(){
   const list = filteredComplaints();
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>受付日</th><th>対象物件</th><th>部屋番号</th><th>入居者名</th><th>内容</th><th>対応状況</th><th>対応者</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="8"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th>受付日</th><th>受付方法</th><th>対象物件</th><th>部屋番号</th><th>入居者名</th><th>連絡先</th><th>内容</th><th>対応内容①</th><th>対応状況</th><th>④設備工事</th><th>対応者</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(r){
     return '<tr>' +
       '<td>' + esc(r.received_date) + '</td>' +
+      '<td>' + esc(r.received_method) + '</td>' +
       '<td>' + esc(r.property_name) + '</td>' +
       '<td>' + esc(r.room_no) + '</td>' +
       '<td>' + esc(r.resident_name) + '</td>' +
-      '<td>' + esc(r.content) + '</td>' +
+      '<td>' + esc(r.contact) + '</td>' +
+      '<td class="wrap-cell">' + esc(r.content) + '</td>' +
+      '<td class="wrap-cell">' + esc(r.response1) + '</td>' +
       '<td>' + esc(r.status) + '</td>' +
+      '<td>' + (r.moved_to_workorder ? '<span class="moved-badge">登録済</span>' : '<span class="moved-badge not-moved">未登録</span>') + '</td>' +
       '<td>' + esc(r.handled_by) + '</td>' +
       '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
@@ -1907,9 +1920,13 @@ function goToWorkOrderFromComplaint(complaint){
   closeModal();
   switchToTab('workorders');
   returnToTab = 'complaints';
+  pendingComplaintTransfer = complaint.id;
   openWorkOrderModal(null, {
     property_name: complaint.property_name,
     room_no: complaint.room_no,
+    resident_name: complaint.resident_name,
+    resident_contact: complaint.contact,
+    work_content: complaint.content,
     inquiry_date: complaint.received_date,
   });
 }
