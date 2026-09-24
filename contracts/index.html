@@ -198,6 +198,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
     <button class="tab-btn" data-tab="gaps">⑤ 漏れチェック <span class="count" id="gap-count" hidden>0</span></button>
     <button class="tab-btn" data-tab="parking">⑥ 駐車場</button>
     <button class="tab-btn" data-tab="power">⑦ 通電一覧</button>
+    <button class="tab-btn" data-tab="complaints">⑧ クレーム対応</button>
   </div>
 
   <section class="panel" id="panel-contracts">
@@ -336,6 +337,28 @@ tbody tr.row-highlight{background:var(--orange-soft);}
       <button class="btn secondary" id="export-power">CSV出力</button>
     </div>
     <div class="table-scroll"><table id="table-power"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-complaints" hidden>
+    <div class="note-box">入居者からのクレーム・問い合わせを1件ずつ記録します。契約とは紐づかず、物件・号室単位で独立して管理します。</div>
+    <div class="toolbar">
+      <input type="text" id="search-complaints" placeholder="物件名・部屋番号・氏名・内容で検索">
+      <select id="status-filter-complaints">
+        <option value="">対応状況: すべて</option>
+        <option value="未対応">未対応</option>
+        <option value="対応中">対応中</option>
+        <option value="完了">完了</option>
+      </select>
+      <select id="closed-filter-complaints">
+        <option value="open">未クローズ</option>
+        <option value="closed">クローズ済</option>
+        <option value="all">すべて</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="export-complaints">CSV出力</button>
+      <button class="btn" id="add-complaint">＋ 新規登録</button>
+    </div>
+    <div class="table-scroll"><table id="table-complaints"><thead></thead><tbody></tbody></table></div>
   </section>
 
   <div class="foot">全ユーザーの更新はリアルタイムで反映されます。</div>
@@ -597,12 +620,29 @@ const WORKORDER_VENDOR_FIELDS = {
 // 区分が「自社物件」のときの詳細項目：オーナー物件の詳細と同じ内容にする
 const WORKORDER_INHOUSE_FIELDS = WORKORDER_VENDOR_FIELDS;
 
+const COMPLAINT_FIELDS = {
+  received_date:{ label:'受付日', type:'date' },
+  received_method:{ label:'受付方法', type:'select', options:['AC','TEL','メール','その他'] },
+  status:{ label:'対応状況', type:'select', options:['未対応','対応中','完了'], required:true },
+  property_name:{ label:'物件名', type:'text', required:true },
+  room_no:{ label:'部屋番号', type:'text' },
+  resident_name:{ label:'入居者名', type:'text' },
+  contact:{ label:'連絡先', type:'text' },
+  handled_by:{ label:'対応者', type:'text', suggest:'name' },
+  content:{ label:'内容', type:'textarea' },
+  response1:{ label:'対応内容①', type:'textarea' },
+  response2:{ label:'対応内容②', type:'textarea' },
+  contact_notes:{ label:'入居者への連絡', type:'textarea' },
+  notes:{ label:'備考', type:'textarea' },
+};
+
 let contracts = [];
 let inspections = [];
 let restorations = [];
 let workOrders = [];
 let parkingContracts = [];
 let powerRecords = [];
+let complaints = [];
 let sort = { contracts: { col:'created_at', dir:1 }, parking: { col:'created_at', dir:1 } };
 let editing = { table:null, id:null };
 
@@ -683,13 +723,14 @@ async function checkNotStale(table, record){
 
 // ---- data ----
 async function fetchAll(){
-  const [c, i, r, w, p, pw] = await Promise.all([
+  const [c, i, r, w, p, pw, cl] = await Promise.all([
     sb.from('contracts').select('*').order('created_at'),
     sb.from('move_in_inspections').select('*').order('created_at'),
     sb.from('restoration_orders').select('*').order('created_at'),
     sb.from('equipment_work_orders').select('*').order('created_at'),
     sb.from('parking_contracts').select('*').order('created_at'),
     sb.from('power_supply_records').select('*').order('created_at'),
+    sb.from('complaints').select('*').order('created_at'),
   ]);
   if (c.error){ setConnNote('読み込みエラー: ' + c.error.message, true); return; }
   contracts = c.data || [];
@@ -698,17 +739,18 @@ async function fetchAll(){
   workOrders = w.data || [];
   parkingContracts = p.data || [];
   powerRecords = pw.data || [];
-  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件 / 駐車場' + parkingContracts.length + '件 / 通電' + powerRecords.length + '件）');
+  complaints = cl.data || [];
+  setConnNote('接続OK（契約' + contracts.length + '件 / 点検' + inspections.length + '件 / 原状回復' + restorations.length + '件 / 設備工事' + workOrders.length + '件 / 駐車場' + parkingContracts.length + '件 / 通電' + powerRecords.length + '件 / クレーム' + complaints.length + '件）');
   renderAll();
 }
 
-const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer','site_staff','power_on_staff','power_off_staff'];
+const NAME_FIELDS = ['assignee','updated_by','inspector','entered_by','staff','walkthrough_staff','vendor_requester','vendor_orderer','site_staff','power_on_staff','power_off_staff','handled_by'];
 const VENDOR_FIELDS = ['vendor','billing_target'];
 
 function renderDatalists(){
   const nameSet = new Set();
   const vendorSet = new Set();
-  [contracts, inspections, restorations, workOrders, parkingContracts, powerRecords].forEach(function(arr){
+  [contracts, inspections, restorations, workOrders, parkingContracts, powerRecords, complaints].forEach(function(arr){
     arr.forEach(function(rec){
       NAME_FIELDS.forEach(function(f){ if (rec[f]) nameSet.add(rec[f]); });
       VENDOR_FIELDS.forEach(function(f){ if (rec[f]) vendorSet.add(rec[f]); });
@@ -729,6 +771,7 @@ function renderAll(){
   renderGaps();
   renderParking();
   renderPower();
+  renderComplaints();
 }
 
 // ---- tab switching ----
@@ -737,7 +780,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     const tab = btn.getAttribute('data-tab');
-    ['contracts','inspections','restorations','workorders','gaps','parking','power'].forEach(function(t){
+    ['contracts','inspections','restorations','workorders','gaps','parking','power','complaints'].forEach(function(t){
       document.getElementById('panel-' + t).hidden = t !== tab;
     });
   });
@@ -1769,10 +1812,92 @@ document.getElementById('export-all').addEventListener('click', function(){
     function(){ exportRestorationsCsv(true); },
     function(){ exportWorkOrdersCsv(true); },
     function(){ exportParkingCsv(true); },
-    function(){ exportPowerCsv(true); }
+    function(){ exportPowerCsv(true); },
+    function(){ exportComplaintsCsv(true); }
   ];
   jobs.forEach(function(job, i){ setTimeout(job, i * 300); });
 });
+
+// =========================================================
+// ⑧ クレーム対応
+// =========================================================
+function complaintModalHtml(record){
+  return '' +
+    '<h2>' + (record ? '編集：クレーム対応' : 'クレーム対応 新規登録') + '</h2>' +
+    '<div class="sub">入居者からのクレーム・問い合わせを1件記録します。契約とは紐づきません。</div>' +
+    fieldSectionHtml(COMPLAINT_FIELDS, record) +
+    updatedByFieldHtml(record) +
+    '<div class="form-msg" id="form-msg"></div>' +
+    '<div class="modal-actions">' +
+      '<div class="modal-actions-left">' +
+        '<button class="btn secondary" id="modal-cancel">キャンセル</button>' +
+        (record ? '<button class="btn danger" id="modal-delete">削除</button>' : '') +
+        closeButtonHtml(record) +
+      '</div>' +
+      '<button class="btn save" id="modal-save">保存</button>' +
+    '</div>';
+}
+
+function openComplaintModal(record){
+  editing = { table:'complaints', id: record ? record.id : null };
+  document.getElementById('modal').innerHTML = complaintModalHtml(record);
+  document.getElementById('modal-backdrop').hidden = false;
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', function(){ saveRecord('complaints', COMPLAINT_FIELDS, record); });
+  const delBtn = document.getElementById('modal-delete');
+  if (delBtn) delBtn.addEventListener('click', function(){ deleteRecord('complaints', record.id); });
+  const closeBtn = document.getElementById('modal-toggle-closed');
+  if (closeBtn) closeBtn.addEventListener('click', function(){ toggleClosed('complaints', record); });
+  wireEmptyFieldHighlighting();
+}
+
+function filteredComplaints(all){
+  const search = document.getElementById('search-complaints').value.trim().toLowerCase();
+  const statusFilter = document.getElementById('status-filter-complaints').value;
+  const closedFilter = document.getElementById('closed-filter-complaints').value;
+  return complaints
+    .filter(function(r){
+      if (all) return true;
+      const hay = ((r.property_name || '') + ' ' + (r.room_no || '') + ' ' + (r.resident_name || '') + ' ' + (r.content || '')).toLowerCase();
+      const matchesSearch = !search || hay.indexOf(search) !== -1;
+      const matchesStatus = !statusFilter || r.status === statusFilter;
+      return matchesSearch && matchesStatus && matchesClosedFilter(closedFilter, r.is_closed);
+    })
+    .sort(function(a, b){ return (a.created_at || '') > (b.created_at || '') ? 1 : -1; });
+}
+
+function renderComplaints(){
+  const list = filteredComplaints();
+  const table = document.getElementById('table-complaints');
+  const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+  thead.innerHTML = '<tr><th>受付日</th><th>対象物件</th><th>部屋番号</th><th>入居者名</th><th>内容</th><th>対応状況</th><th>対応者</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="8"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  tbody.innerHTML = list.map(function(r){
+    return '<tr>' +
+      '<td>' + esc(r.received_date) + '</td>' +
+      '<td>' + esc(r.property_name) + '</td>' +
+      '<td>' + esc(r.room_no) + '</td>' +
+      '<td>' + esc(r.resident_name) + '</td>' +
+      '<td>' + esc(r.content) + '</td>' +
+      '<td>' + esc(r.status) + '</td>' +
+      '<td>' + esc(r.handled_by) + '</td>' +
+      '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
+    '</tr>';
+  }).join('');
+}
+document.getElementById('table-complaints').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-action="edit-complaint"]');
+  if (btn) openComplaintModal(complaints.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+});
+document.getElementById('search-complaints').addEventListener('input', renderComplaints);
+document.getElementById('status-filter-complaints').addEventListener('change', renderComplaints);
+document.getElementById('closed-filter-complaints').addEventListener('change', renderComplaints);
+document.getElementById('add-complaint').addEventListener('click', function(){ openComplaintModal(null); });
+function exportComplaintsCsv(all){
+  const cols = Object.keys(COMPLAINT_FIELDS);
+  exportCsv('クレーム対応', filteredComplaints(all), cols, function(c){ return COMPLAINT_FIELDS[c].label; });
+}
+document.getElementById('export-complaints').addEventListener('click', function(){ exportComplaintsCsv(false); });
 
 // =========================================================
 // ⑤ 漏れチェック
@@ -1934,6 +2059,7 @@ sb.channel('contracts-app-changes')
   .on('postgres_changes', { event:'*', schema:'public', table:'equipment_work_orders' }, function(){ fetchAll(); })
   .on('postgres_changes', { event:'*', schema:'public', table:'parking_contracts' }, function(){ fetchAll(); })
   .on('postgres_changes', { event:'*', schema:'public', table:'power_supply_records' }, function(){ fetchAll(); })
+  .on('postgres_changes', { event:'*', schema:'public', table:'complaints' }, function(){ fetchAll(); })
   .subscribe();
 
 fetchAll();
