@@ -1343,7 +1343,7 @@ function renderInspections(){
   const list = filteredInspections();
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:22%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:6%">通電停止</th><th style="width:8%">担当者</th></tr>';
+  thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:8%">担当者</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
@@ -1358,7 +1358,7 @@ function renderInspections(){
       '<td style="text-align:center">' + esc(r ? r.ignition_test_done : '') + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.disinfection_status) + '</td>' +
       '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
-      '<td style="text-align:center">' + (powerOff ? '<span class="moved-badge">停止済</span>' : '<span class="moved-badge not-moved">未停止</span>') + '</td>' +
+      '<td style="text-align:center">' + (powerOff ? '<span class="moved-badge">停止済</span>' : '') + '</td>' +
       '<td style="text-align:center">' + esc(r ? r.inspector : '') + '</td>' +
     '</tr>';
   }).join('');
