@@ -100,6 +100,7 @@ thead th:hover{background:var(--orange-soft);}
 tbody td{padding:7px 10px; border:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 tbody tr:hover{background:var(--surface-2);}
 tbody tr.row-highlight{background:var(--orange-soft);}
+tbody tr.clickable-row{cursor:pointer;}
 .status-chip{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap;}
 .status-申込中,.status-未着手,.status-未登録{background:var(--surface-2); color:var(--ink-soft);}
 .status-契約中,.status-工事中,.status-進行中,.status-契約締結{background:var(--orange-soft); color:var(--orange-ink);}
@@ -118,7 +119,6 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .status-完了{background:var(--surface-2); color:var(--ink-soft);}
 .chk{color:var(--ok); font-weight:700;}
 .chk-no{color:var(--border);}
-.row-actions button{background:none; border:none; cursor:pointer; color:var(--navy-ink); font-size:12px; text-decoration:underline; padding:0; margin-right:8px;}
 .empty-note{padding:20px; text-align:center; color:var(--ink-soft); font-size:13px;}
 .table-scroll{overflow-x:hidden;}
 /* 文章が長い列（クレームの内容・対応内容など）は横に伸ばさず、折り返して縦に伸ばす */
@@ -335,7 +335,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
   </section>
 
   <section class="panel" id="panel-power" hidden>
-    <div class="note-box">契約に紐づく通電・停止の記録です。①が解約かつ退去立会日が入力されると行が表示されます。対象の行の「編集」から登録してください。</div>
+    <div class="note-box">契約に紐づく通電・停止の記録です。①が解約かつ退去立会日が入力されると行が表示されます。対象の行をクリックして登録してください。</div>
     <div class="toolbar">
       <input type="text" id="search-power" placeholder="物件名・部屋番号で検索">
       <select id="closed-filter-power">
@@ -858,7 +858,7 @@ function filteredContracts(all){
 const CONTRACT_COLS = ['record_type','property_name','room_no','contract_name','contract_date','move_in_confirmed_date','move_out_date','status','assignee'];
 const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
 // 列幅：物件名・契約者名を広めに、区分・部屋番号・日付・担当者・操作は詰める
-const CONTRACT_COL_WIDTHS = { record_type:6, property_name:17, room_no:6, contract_name:20, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:10, assignee:5 };
+const CONTRACT_COL_WIDTHS = { record_type:6, property_name:23, room_no:6, contract_name:20, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:10, assignee:5 };
 const CONTRACT_COL_CENTER = { room_no:true, assignee:true };
 const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
@@ -870,10 +870,10 @@ function renderContracts(){
     const label = CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label;
     const alignStyle = c === 'move_out_date' ? ';text-align:left' : '';
     return '<th data-col="' + c + '" style="width:' + CONTRACT_COL_WIDTHS[c] + '%' + alignStyle + '">' + esc(label) + '</th>';
-  }).join('') + '<th style="width:6%">操作</th></tr>';
+  }).join('') + '</tr>';
 
   if (!list.length){
-    tbody.innerHTML = '<tr><td colspan="' + (CONTRACT_COLS.length + 1) + '"><div class="empty-note">該当する契約がありません</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + CONTRACT_COLS.length + '"><div class="empty-note">該当する契約がありません</div></td></tr>';
     return;
   }
   tbody.innerHTML = list.map(function(r){
@@ -883,7 +883,7 @@ function renderContracts(){
       if (c === 'record_type') return '<td' + alignAttr + '><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
       return '<td' + alignAttr + '>' + esc(r[c]) + '</td>';
     }).join('');
-    return '<tr>' + cells + '<td class="row-actions" style="text-align:center"><button data-action="edit-contract" data-id="' + r.id + '">編集</button></td></tr>';
+    return '<tr class="clickable-row" data-id="' + r.id + '">' + cells + '</tr>';
   }).join('');
 }
 
@@ -897,8 +897,8 @@ document.getElementById('table-contracts').addEventListener('click', function(e)
     renderContracts();
     return;
   }
-  const btn = e.target.closest('button[data-action="edit-contract"]');
-  if (btn) openContractModal(contracts.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+  const tr = e.target.closest('tbody tr[data-id]');
+  if (tr) openContractModal(contracts.find(function(r){ return r.id === tr.getAttribute('data-id'); }));
 });
 document.getElementById('search-contracts').addEventListener('input', renderContracts);
 document.getElementById('month-filter-contracts').addEventListener('change', renderContracts);
@@ -1078,7 +1078,7 @@ async function saveContract(record){
 const PARKING_COLS = ['record_type','property_name','room_no','contract_name','contract_start_date','move_out_date','status','assignee'];
 const ALL_PARKING_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 const PARKING_COL_CENTER = { record_type:true, room_no:true, status:true, assignee:true };
-const PARKING_COL_WIDTHS = { record_type:6, property_name:20, room_no:6, contract_name:20, contract_start_date:12, move_out_date:12, status:11, assignee:7 };
+const PARKING_COL_WIDTHS = { record_type:6, property_name:26, room_no:6, contract_name:20, contract_start_date:12, move_out_date:12, status:11, assignee:7 };
 
 // 駐車場：鍵の受け渡しがない代わりに契約開始日を「引渡済」の基準にする
 function parkingStatus(r){
@@ -1120,10 +1120,10 @@ function renderParking(){
     const label = CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label;
     const alignStyle = c === 'move_out_date' ? ';text-align:left' : '';
     return '<th data-col="' + c + '" style="width:' + PARKING_COL_WIDTHS[c] + '%' + alignStyle + '">' + esc(label) + '</th>';
-  }).join('') + '<th style="width:6%">操作</th></tr>';
+  }).join('') + '</tr>';
 
   if (!list.length){
-    tbody.innerHTML = '<tr><td colspan="' + (PARKING_COLS.length + 1) + '"><div class="empty-note">該当する駐車場契約がありません</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + PARKING_COLS.length + '"><div class="empty-note">該当する駐車場契約がありません</div></td></tr>';
     return;
   }
   tbody.innerHTML = list.map(function(r){
@@ -1133,7 +1133,7 @@ function renderParking(){
       if (c === 'record_type') return '<td' + alignAttr + '><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
       return '<td' + alignAttr + '>' + esc(r[c]) + '</td>';
     }).join('');
-    return '<tr>' + cells + '<td class="row-actions" style="text-align:center"><button data-action="edit-parking" data-id="' + r.id + '">編集</button></td></tr>';
+    return '<tr class="clickable-row" data-id="' + r.id + '">' + cells + '</tr>';
   }).join('');
 }
 
@@ -1147,8 +1147,8 @@ document.getElementById('table-parking').addEventListener('click', function(e){
     renderParking();
     return;
   }
-  const btn = e.target.closest('button[data-action="edit-parking"]');
-  if (btn) openParkingModal(parkingContracts.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+  const tr = e.target.closest('tbody tr[data-id]');
+  if (tr) openParkingModal(parkingContracts.find(function(r){ return r.id === tr.getAttribute('data-id'); }));
 });
 document.getElementById('search-parking').addEventListener('input', renderParking);
 document.getElementById('status-filter-parking').addEventListener('change', renderParking);
@@ -1308,11 +1308,11 @@ function renderInspections(){
   const list = filteredInspections();
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:11%">担当者</th><th style="width:6%">操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:22%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:14%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="10"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
-    return '<tr>' +
+    return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(row.contract.contract_date) + '</td>' +
@@ -1323,18 +1323,17 @@ function renderInspections(){
       '<td style="text-align:center">' + esc(row.contract.disinfection_status) + '</td>' +
       '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
       '<td style="text-align:center">' + esc(r ? r.inspector : '') + '</td>' +
-      '<td class="row-actions" style="text-align:center"><button data-action="edit-inspection" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
 document.getElementById('table-inspections').addEventListener('click', function(e){
-  const btn = e.target.closest('button[data-action="edit-inspection"]');
-  if (!btn) return;
-  const id = btn.getAttribute('data-id');
+  const tr = e.target.closest('tbody tr[data-contract-id]');
+  if (!tr) return;
+  const id = tr.getAttribute('data-id');
   if (id){
     openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', inspections.find(function(r){ return r.id === id; }));
   } else {
-    openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null, btn.getAttribute('data-contract-id'));
+    openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null, tr.getAttribute('data-contract-id'));
   }
 });
 document.getElementById('search-inspections').addEventListener('input', renderInspections);
@@ -1368,8 +1367,8 @@ function renderRestorations(){
   const list = filteredRestorations();
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:18%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%;text-align:left">退去日</th><th style="width:8%">業者名</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:6%">担当者</th><th style="width:6%">操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:20%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%;text-align:left">退去日</th><th style="width:8%">業者名</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:10%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(row){
     const r = row.restoration;
@@ -1377,7 +1376,7 @@ function renderRestorations(){
     if (r && r.revenue != null) totalRevenue += Number(r.revenue);
     if (r && r.cost != null) totalCost += Number(r.cost);
     if (profit != null) totalProfit += profit;
-    return '<tr>' +
+    return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(row.contract.move_out_date) + '</td>' +
@@ -1389,7 +1388,6 @@ function renderRestorations(){
       '<td style="text-align:right">' + (r ? fmtMoney(r.cost) : '') + '</td>' +
       '<td style="text-align:right">' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
       '<td style="text-align:center">' + esc(r ? r.staff : '') + '</td>' +
-      '<td class="row-actions" style="text-align:center"><button data-action="edit-restoration" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
   const totalRow = '<tr class="total-row">' +
@@ -1397,18 +1395,18 @@ function renderRestorations(){
     '<td style="text-align:right">' + fmtMoney(totalRevenue) + '</td>' +
     '<td style="text-align:right">' + fmtMoney(totalCost) + '</td>' +
     '<td style="text-align:right">' + fmtMoney(totalProfit) + '</td>' +
-    '<td></td><td></td>' +
+    '<td></td>' +
   '</tr>';
   tbody.innerHTML = rowsHtml + totalRow;
 }
 document.getElementById('table-restorations').addEventListener('click', function(e){
-  const btn = e.target.closest('button[data-action="edit-restoration"]');
-  if (!btn) return;
-  const id = btn.getAttribute('data-id');
+  const tr = e.target.closest('tbody tr[data-contract-id]');
+  if (!tr) return;
+  const id = tr.getAttribute('data-id');
   if (id){
     openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', restorations.find(function(r){ return r.id === id; }));
   } else {
-    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null, btn.getAttribute('data-contract-id'));
+    openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null, tr.getAttribute('data-contract-id'));
   }
 });
 document.getElementById('search-restorations').addEventListener('input', renderRestorations);
@@ -1619,11 +1617,11 @@ function renderPower(){
   const list = filteredPower();
   const table = document.getElementById('table-power');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:24%">物件名</th><th style="width:8%">部屋番号</th><th style="width:10%">通電依頼日</th><th style="width:10%">通電開始日</th><th style="width:10%">通水開始日</th><th style="width:10%">通電停止依頼日</th><th style="width:10%">通電停止日</th><th style="width:10%">通水停止日</th><th style="width:8%">操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="9"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:32%">物件名</th><th style="width:8%">部屋番号</th><th style="width:10%">通電依頼日</th><th style="width:10%">通電開始日</th><th style="width:10%">通水開始日</th><th style="width:10%">通電停止依頼日</th><th style="width:10%">通電停止日</th><th style="width:10%">通水停止日</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="8"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.power;
-    return '<tr>' +
+    return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(r ? r.power_on_request_date : '') + '</td>' +
@@ -1632,18 +1630,17 @@ function renderPower(){
       '<td>' + esc(r ? r.power_off_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_date : '') + '</td>' +
       '<td>' + esc(r ? r.water_supply_stop_date : '') + '</td>' +
-      '<td class="row-actions" style="text-align:center"><button data-action="edit-power" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
 document.getElementById('table-power').addEventListener('click', function(e){
-  const btn = e.target.closest('button[data-action="edit-power"]');
-  if (!btn) return;
-  const id = btn.getAttribute('data-id');
+  const tr = e.target.closest('tbody tr[data-contract-id]');
+  if (!tr) return;
+  const id = tr.getAttribute('data-id');
   if (id){
     openPowerModal(powerRecords.find(function(r){ return r.id === id; }));
   } else {
-    openPowerModal(null, btn.getAttribute('data-contract-id'));
+    openPowerModal(null, tr.getAttribute('data-contract-id'));
   }
 });
 document.getElementById('search-power').addEventListener('input', renderPower);
@@ -1663,7 +1660,7 @@ function powerModalHtml(record, contractId){
     renderField('room_no_display', POWER_CONTRACT_FIELD.room_no_display, null);
   return '' +
     '<h2>' + (record ? '編集：通電一覧' : '通電一覧 新規登録') + '</h2>' +
-    '<div class="sub">①の一覧の「編集」から開いた契約に対して登録します。</div>' +
+    '<div class="sub">①の一覧の行をクリックして開いた契約に対して登録します。</div>' +
     '<div class="form-grid">' + contractFieldHtml + '</div>' +
     '<fieldset><legend>開始ツール</legend>' + fieldSectionHtml(POWER_NEW_FIELDS, record) + '</fieldset>' +
     '<fieldset><legend>停止ツール</legend>' + fieldSectionHtml(POWER_MOVEOUT_FIELDS, record) + '</fieldset>' +
@@ -1817,15 +1814,15 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:4%">区分</th><th style="width:9%">対象物件</th><th style="width:3%">部屋番号</th><th style="width:17%">工事内容</th><th style="width:6%">業者名</th><th style="width:9%">入電日</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th><th style="width:4%">操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="13"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:4%">区分</th><th style="width:9%">対象物件</th><th style="width:3%">部屋番号</th><th style="width:21%">工事内容</th><th style="width:6%">業者名</th><th style="width:9%">入電日</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(r){
     const profit = (r.revenue != null && r.cost != null) ? (Number(r.revenue) - Number(r.cost)) : null;
     if (r.revenue != null) totalRevenue += Number(r.revenue);
     if (r.cost != null) totalCost += Number(r.cost);
     if (profit != null) totalProfit += profit;
-    return '<tr>' +
+    return '<tr class="clickable-row" data-id="' + r.id + '">' +
       '<td>' + esc(r.work_type) + '</td>' +
       '<td>' + esc(r.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(r.room_no) + '</td>' +
@@ -1838,7 +1835,6 @@ function renderWorkOrders(){
       '<td style="text-align:right">' + fmtMoney(r.cost) + '</td>' +
       '<td style="text-align:right">' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
       '<td style="text-align:center">' + esc(r.site_staff) + '</td>' +
-      '<td class="row-actions" style="text-align:center"><button data-action="edit-workorder" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
   const totalRow = '<tr class="total-row">' +
@@ -1846,13 +1842,13 @@ function renderWorkOrders(){
     '<td style="text-align:right">' + fmtMoney(totalRevenue) + '</td>' +
     '<td style="text-align:right">' + fmtMoney(totalCost) + '</td>' +
     '<td style="text-align:right">' + fmtMoney(totalProfit) + '</td>' +
-    '<td></td><td></td>' +
+    '<td></td>' +
   '</tr>';
   tbody.innerHTML = rowsHtml + totalRow;
 }
 document.getElementById('table-workorders').addEventListener('click', function(e){
-  const btn = e.target.closest('button[data-action="edit-workorder"]');
-  if (btn) openWorkOrderModal(workOrders.find(function(r){ return r.id === btn.getAttribute('data-id'); }));
+  const tr = e.target.closest('tbody tr[data-id]');
+  if (tr) openWorkOrderModal(workOrders.find(function(r){ return r.id === tr.getAttribute('data-id'); }));
 });
 document.getElementById('search-workorders').addEventListener('input', renderWorkOrders);
 document.getElementById('month-filter-workorders').addEventListener('change', renderWorkOrders);
@@ -1941,10 +1937,10 @@ function renderComplaints(){
   const list = filteredComplaints();
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:9%">受付日</th><th style="width:6%">受付方法</th><th style="width:11%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:7%">入居者名</th><th style="width:8%">連絡先</th><th style="width:14%">内容</th><th style="width:14%">対応内容①</th><th style="width:8%">対応状況</th><th style="width:9%">④設備工事</th><th style="width:5%">対応者</th><th style="width:4%">操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:9%">受付日</th><th style="width:6%">受付方法</th><th style="width:15%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:7%">入居者名</th><th style="width:8%">連絡先</th><th style="width:14%">内容</th><th style="width:14%">対応内容①</th><th style="width:8%">対応状況</th><th style="width:9%">④設備工事</th><th style="width:5%">対応者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(r){
-    return '<tr>' +
+    return '<tr class="clickable-row" data-id="' + r.id + '">' +
       '<td>' + esc(r.received_date) + '</td>' +
       '<td style="text-align:center">' + esc(r.received_method) + '</td>' +
       '<td>' + esc(r.property_name) + '</td>' +
@@ -1956,7 +1952,6 @@ function renderComplaints(){
       '<td style="text-align:center"><span class="status-chip status-' + esc(r.status) + '">' + esc(r.status) + '</span></td>' +
       '<td style="text-align:center">' + (r.moved_to_workorder ? '<span class="moved-badge">登録済</span>' : '<span class="moved-badge not-moved">未登録</span>') + '</td>' +
       '<td style="text-align:center">' + esc(r.handled_by) + '</td>' +
-      '<td class="row-actions" style="text-align:center"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -1976,8 +1971,8 @@ function goToWorkOrderFromComplaint(complaint){
   });
 }
 document.getElementById('table-complaints').addEventListener('click', function(e){
-  const editBtn = e.target.closest('button[data-action="edit-complaint"]');
-  if (editBtn) openComplaintModal(complaints.find(function(r){ return r.id === editBtn.getAttribute('data-id'); }));
+  const tr = e.target.closest('tbody tr[data-id]');
+  if (tr) openComplaintModal(complaints.find(function(r){ return r.id === tr.getAttribute('data-id'); }));
 });
 document.getElementById('search-complaints').addEventListener('input', renderComplaints);
 document.getElementById('status-filter-complaints').addEventListener('change', renderComplaints);
@@ -2091,14 +2086,13 @@ function renderGaps(){
 
   const table = document.getElementById('table-gaps');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th data-col="tag" style="width:9%">タグ</th><th data-col="label" style="width:25%">対象</th><th style="width:61%">内容</th><th style="width:5%">操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="4"><div class="empty-note">現在、抜け漏れの可能性がある項目はありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th data-col="tag" style="width:9%">タグ</th><th data-col="label" style="width:25%">対象</th><th style="width:66%">内容</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="3"><div class="empty-note">現在、抜け漏れの可能性がある項目はありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(it, idx){
-    return '<tr>' +
+    return '<tr class="clickable-row" data-idx="' + idx + '">' +
       '<td style="text-align:center"><span class="status-chip status-' + esc(it.tag) + '">' + esc(it.tag) + '</span></td>' +
       '<td>' + esc(it.label) + '</td>' +
       '<td>' + esc(it.text) + '</td>' +
-      '<td class="row-actions" style="text-align:center"><button data-action="open-gap" data-idx="' + idx + '">開く</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -2112,9 +2106,9 @@ document.getElementById('table-gaps').addEventListener('click', function(e){
     renderGaps();
     return;
   }
-  const btn = e.target.closest('button[data-action="open-gap"]');
-  if (btn){
-    const item = gapItems[Number(btn.getAttribute('data-idx'))];
+  const tr = e.target.closest('tbody tr[data-idx]');
+  if (tr){
+    const item = gapItems[Number(tr.getAttribute('data-idx'))];
     if (item) item.open();
   }
 });
