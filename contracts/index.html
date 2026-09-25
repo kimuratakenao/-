@@ -90,13 +90,14 @@ header.top .tagline{font-size:12.5px; color:var(--ink-soft);}
 }
 .warn-box h3{margin:0 0 6px; font-size:13px; color:var(--orange-ink);}
 
-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+table{width:100%; table-layout:fixed; border-collapse:collapse; font-size:12.5px;}
 thead th{
   background:var(--navy-soft); color:var(--navy-ink); text-align:left; padding:8px 10px;
-  border:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none;
+  border:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  cursor:pointer; user-select:none;
 }
 thead th:hover{background:var(--orange-soft);}
-tbody td{padding:7px 10px; border:1px solid var(--border); white-space:nowrap;}
+tbody td{padding:7px 10px; border:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 tbody tr:hover{background:var(--surface-2);}
 tbody tr.row-highlight{background:var(--orange-soft);}
 .status-chip{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap;}
@@ -119,9 +120,9 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .chk-no{color:var(--border);}
 .row-actions button{background:none; border:none; cursor:pointer; color:var(--navy-ink); font-size:12px; text-decoration:underline; padding:0; margin-right:8px;}
 .empty-note{padding:20px; text-align:center; color:var(--ink-soft); font-size:13px;}
-.table-scroll{overflow-x:auto;}
+.table-scroll{overflow-x:hidden;}
 /* 文章が長い列（クレームの内容・対応内容など）は横に伸ばさず、折り返して縦に伸ばす */
-.wrap-cell{white-space:normal; max-width:260px; min-width:160px; word-break:break-word; vertical-align:top;}
+.wrap-cell{white-space:normal; word-break:break-word; vertical-align:top;}
 .moved-badge{padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; background:var(--ok-soft); color:var(--ok);}
 .moved-badge.not-moved{background:var(--surface-2); color:var(--ink-soft);}
 
@@ -575,6 +576,7 @@ const POWER_NEW_FIELDS = {
   power_on_request_date:{ label:'通電依頼日', type:'date' },
   water_heater_request_date:{ label:'電気温水器通電依頼日', type:'date' },
   power_on_date:{ label:'通電開始日', type:'date' },
+  water_supply_start_date:{ label:'通水開始日', type:'date' },
   power_on_web_application_no:{ label:'WEB申込番号', type:'text' },
 };
 // 停止ツール（通電停止）：①契約の入居確定日を参照
@@ -583,6 +585,7 @@ const POWER_MOVEOUT_FIELDS = {
   power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
   power_off_request_date:{ label:'通電停止依頼日', type:'date', full:true },
   power_off_date:{ label:'通電停止日', type:'date' },
+  water_supply_stop_date:{ label:'通水停止日', type:'date' },
   power_off_web_application_no:{ label:'WEB申込番号', type:'text' },
 };
 const POWER_NOTES_FIELD = {
@@ -1597,8 +1600,8 @@ function renderPower(){
   const list = filteredPower();
   const table = document.getElementById('table-power');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>物件名</th><th>部屋番号</th><th>通電依頼日</th><th>通電開始日</th><th>通電停止依頼日</th><th>通電停止日</th><th>操作</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="7"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th>物件名</th><th>部屋番号</th><th>通電依頼日</th><th>通電開始日</th><th>通水開始日</th><th>通電停止依頼日</th><th>通電停止日</th><th>通水停止日</th><th>操作</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="9"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.power;
     return '<tr>' +
@@ -1606,8 +1609,10 @@ function renderPower(){
       '<td>' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(r ? r.power_on_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_on_date : '') + '</td>' +
+      '<td>' + esc(r ? r.water_supply_start_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_date : '') + '</td>' +
+      '<td>' + esc(r ? r.water_supply_stop_date : '') + '</td>' +
       '<td class="row-actions"><button data-action="edit-power" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
