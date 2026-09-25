@@ -71,6 +71,7 @@ header.top .tagline{font-size:12.5px; color:var(--ink-soft);}
   color:var(--ink); font-size:13px;
 }
 .toolbar .spacer{flex:1;}
+.toolbar .list-count{font-size:12.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap;}
 .btn{
   padding:9px 16px; border-radius:7px; border:1px solid var(--navy); background:var(--navy); color:#fff;
   font-weight:700; font-size:13px; cursor:pointer;
@@ -242,6 +243,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-contracts">0件</span>
       <button class="btn secondary" id="export-contracts">CSV出力</button>
       <button class="btn" id="add-contract">＋ 新規登録</button>
     </div>
@@ -258,6 +260,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-inspections">0件</span>
       <button class="btn secondary" id="export-inspections">CSV出力</button>
       <button class="btn" id="add-inspection">＋ 新規登録</button>
     </div>
@@ -275,6 +278,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-restorations">0件</span>
       <button class="btn secondary" id="export-restorations">CSV出力</button>
       <button class="btn" id="add-restoration">＋ 新規登録</button>
     </div>
@@ -297,6 +301,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-workorders">0件</span>
       <button class="btn secondary" id="export-workorders">CSV出力</button>
       <button class="btn" id="add-workorder">＋ 新規登録</button>
     </div>
@@ -337,6 +342,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-parking">0件</span>
       <button class="btn secondary" id="export-parking">CSV出力</button>
       <button class="btn" id="add-parking">＋ 新規登録</button>
     </div>
@@ -353,6 +359,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-power">0件</span>
       <button class="btn secondary" id="export-power">CSV出力</button>
     </div>
     <div class="table-scroll"><table id="table-power"><thead></thead><tbody></tbody></table></div>
@@ -375,6 +382,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="all">すべて</option>
       </select>
       <div class="spacer"></div>
+      <span class="list-count" id="count-complaints">0件</span>
       <button class="btn secondary" id="export-complaints">CSV出力</button>
       <button class="btn" id="add-complaint">＋ 新規登録</button>
     </div>
@@ -894,6 +902,7 @@ const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE
 
 function renderContracts(){
   const list = filteredContracts();
+  document.getElementById('count-contracts').textContent = list.length + '件';
   const table = document.getElementById('table-contracts');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr>' + CONTRACT_COLS.map(function(c){
@@ -1154,6 +1163,7 @@ function filteredParking(all){
 
 function renderParking(){
   const list = filteredParking();
+  document.getElementById('count-parking').textContent = list.length + '件';
   const table = document.getElementById('table-parking');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr>' + PARKING_COLS.map(function(c){
@@ -1348,6 +1358,7 @@ function filteredInspections(all){
 }
 function renderInspections(){
   const list = filteredInspections();
+  document.getElementById('count-inspections').textContent = list.length + '件';
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:8%">担当者</th></tr>';
@@ -1409,6 +1420,7 @@ function filteredRestorations(all){
 }
 function renderRestorations(){
   const list = filteredRestorations();
+  document.getElementById('count-restorations').textContent = list.length + '件';
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr><th style="width:20%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%;text-align:left">退去日</th><th style="width:8%">業者名</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:10%">担当者</th></tr>';
@@ -1678,6 +1690,7 @@ function filteredPower(all){
 }
 function renderPower(){
   const list = filteredPower();
+  document.getElementById('count-power').textContent = list.length + '件';
   const table = document.getElementById('table-power');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr><th style="width:32%">物件名</th><th style="width:8%">部屋番号</th><th style="width:10%">通電依頼日</th><th style="width:10%">通電開始日</th><th style="width:10%">通水開始日</th><th style="width:10%">通電停止依頼日</th><th style="width:10%">通電停止日</th><th style="width:10%">通水停止日</th></tr>';
@@ -1876,6 +1889,7 @@ function filteredWorkOrders(all){
 
 function renderWorkOrders(){
   const list = filteredWorkOrders();
+  document.getElementById('count-workorders').textContent = list.length + '件';
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr><th style="width:4%">区分</th><th style="width:11%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:16%">工事内容</th><th style="width:6%">業者名</th><th style="width:9%">入電日</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th></tr>';
@@ -2001,6 +2015,7 @@ function filteredComplaints(all){
 
 function renderComplaints(){
   const list = filteredComplaints();
+  document.getElementById('count-complaints').textContent = list.length + '件';
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr><th style="width:9%">受付日</th><th style="width:6%">受付方法</th><th style="width:12%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:7%">入居者名</th><th style="width:16%">連絡先</th><th style="width:14%">内容</th><th style="width:14%">対応内容①</th><th style="width:6%">対応状況</th><th style="width:7%">④設備工事</th><th style="width:4%">対応者</th></tr>';
