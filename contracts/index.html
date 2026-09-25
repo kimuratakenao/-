@@ -109,6 +109,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .status-契約{background:var(--navy-soft); color:var(--navy-ink);}
 .status-解約{background:var(--danger-soft); color:var(--danger);}
 .status-入居前{background:var(--ok-soft); color:var(--ok);}
+.status-原復{background:var(--surface-2); color:var(--ink-soft);}
 .status-オーナー物件,.status-設備{background:var(--orange-soft); color:var(--orange-ink);}
 .status-自社物件{background:var(--ok-soft); color:var(--ok);}
 .status-未対応{background:var(--danger-soft); color:var(--danger);}
@@ -1989,14 +1990,14 @@ function computeGaps(){
     // 事務⇄現場の食い違いチェック
     if (tag === '解約'){
       if (c.settlement_sent_date && !rest.length){
-        items.push({ tag:tag, label:label, text: '精算書は発送済みだが、退去・原状回復工事の記録が未登録', open: function(){ openContractModal(c); } });
+        items.push({ tag:'原復', label:label, text: '精算書は発送済みだが、退去・原状回復工事の記録が未登録', open: function(){ openContractModal(c); } });
       }
       if (!rest.length && c.move_out_date && (daysSince(c.move_out_date) || 0) >= 14){
-        items.push({ tag:tag, label:label, text: '退去日から' + daysSince(c.move_out_date) + '日経過しているが、退去・原状回復工事が未登録', open: function(){ openContractModal(c); } });
+        items.push({ tag:'原復', label:label, text: '退去日から' + daysSince(c.move_out_date) + '日経過しているが、退去・原状回復工事が未登録', open: function(){ openContractModal(c); } });
       }
       rest.forEach(function(r){
         if (r.completed_date && !c.settlement_sent_date){
-          items.push({ tag:tag, label:label, text: '原状回復工事は完了しているが、精算書がまだ発送されていない', open: function(){ openContractModal(c); } });
+          items.push({ tag:'原復', label:label, text: '原状回復工事は完了しているが、精算書がまだ発送されていない', open: function(){ openContractModal(c); } });
         }
       });
     }
@@ -2024,7 +2025,7 @@ function computeGaps(){
     rest.forEach(function(r){
       const b = blankFieldLabels(r, RESTORATION_FIELDS, ['notes','contract_id']);
       if (b.length){
-        items.push({ tag:'解約', label:label, text: '退去・原状回復工事の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', r); } });
+        items.push({ tag:'原復', label:label, text: '退去・原状回復工事の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', r); } });
       }
     });
   });
