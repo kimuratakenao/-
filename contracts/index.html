@@ -92,7 +92,7 @@ header.top .tagline{font-size:12.5px; color:var(--ink-soft);}
 
 table{width:100%; table-layout:fixed; border-collapse:collapse; font-size:12.5px;}
 thead th{
-  background:var(--navy-soft); color:var(--navy-ink); text-align:left; padding:8px 10px;
+  background:var(--navy-soft); color:var(--navy-ink); text-align:center; padding:8px 10px;
   border:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   cursor:pointer; user-select:none;
 }
@@ -691,6 +691,16 @@ document.getElementById('modal-backdrop').addEventListener('compositionend', fun
   if (!el || !el.getAttribute || el.getAttribute('data-key') !== 'room_no') return;
   normalizeRoomNoInput(el);
 });
+// カレンダー入力欄で「-」キーを押すと日付を空欄に戻す（ネイティブの日付入力では直接「-」を入力できないため）
+document.getElementById('modal-backdrop').addEventListener('keydown', function(e){
+  const el = e.target;
+  if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
+  if (e.key !== '-') return;
+  e.preventDefault();
+  el.value = '';
+  el.dispatchEvent(new Event('input', { bubbles:true }));
+  el.dispatchEvent(new Event('change', { bubbles:true }));
+});
 
 function daysUntil(dateStr){
   if (!dateStr) return null;
@@ -848,7 +858,8 @@ function filteredContracts(all){
 const CONTRACT_COLS = ['record_type','property_name','room_no','contract_name','contract_date','move_in_confirmed_date','move_out_date','status','assignee'];
 const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
 // 列幅：物件名・契約者名を広めに、区分・部屋番号・日付・担当者・操作は詰める
-const CONTRACT_COL_WIDTHS = { record_type:6, property_name:20, room_no:6, contract_name:14, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:10, assignee:8 };
+const CONTRACT_COL_WIDTHS = { record_type:6, property_name:17, room_no:6, contract_name:20, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:10, assignee:5 };
+const CONTRACT_COL_CENTER = { room_no:true, assignee:true };
 const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
 function renderContracts(){
@@ -857,7 +868,8 @@ function renderContracts(){
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr>' + CONTRACT_COLS.map(function(c){
     const label = CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label;
-    return '<th data-col="' + c + '" style="width:' + CONTRACT_COL_WIDTHS[c] + '%">' + esc(label) + '</th>';
+    const alignStyle = c === 'move_out_date' ? ';text-align:left' : '';
+    return '<th data-col="' + c + '" style="width:' + CONTRACT_COL_WIDTHS[c] + '%' + alignStyle + '">' + esc(label) + '</th>';
   }).join('') + '<th style="width:6%">操作</th></tr>';
 
   if (!list.length){
@@ -866,11 +878,12 @@ function renderContracts(){
   }
   tbody.innerHTML = list.map(function(r){
     const cells = CONTRACT_COLS.map(function(c){
-      if (c === 'status') return '<td><span class="status-chip status-' + r.status + '">' + esc(r.status) + '</span></td>';
-      if (c === 'record_type') return '<td><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
-      return '<td>' + esc(r[c]) + '</td>';
+      const alignAttr = CONTRACT_COL_CENTER[c] ? ' style="text-align:center"' : '';
+      if (c === 'status') return '<td' + alignAttr + '><span class="status-chip status-' + r.status + '">' + esc(r.status) + '</span></td>';
+      if (c === 'record_type') return '<td' + alignAttr + '><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
+      return '<td' + alignAttr + '>' + esc(r[c]) + '</td>';
     }).join('');
-    return '<tr>' + cells + '<td class="row-actions"><button data-action="edit-contract" data-id="' + r.id + '">編集</button></td></tr>';
+    return '<tr>' + cells + '<td class="row-actions" style="text-align:center"><button data-action="edit-contract" data-id="' + r.id + '">編集</button></td></tr>';
   }).join('');
 }
 
@@ -1063,8 +1076,8 @@ async function saveContract(record){
 // ⑥ 駐車場（①と同じ内容だが、入居者名・連絡先（入居者）は不要）
 // =========================================================
 const PARKING_COLS = ['record_type','property_name','room_no','contract_name','contract_start_date','move_out_date','status','assignee'];
-const PARKING_COL_WIDTHS = { record_type:7, property_name:22, room_no:7, contract_name:16, contract_start_date:11, move_out_date:11, status:11, assignee:8 };
 const ALL_PARKING_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
+const PARKING_COL_CENTER = { room_no:true, assignee:true };
 
 // 駐車場：鍵の受け渡しがない代わりに契約開始日を「引渡済」の基準にする
 function parkingStatus(r){
@@ -1104,8 +1117,9 @@ function renderParking(){
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr>' + PARKING_COLS.map(function(c){
     const label = CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label;
-    return '<th data-col="' + c + '" style="width:' + PARKING_COL_WIDTHS[c] + '%">' + esc(label) + '</th>';
-  }).join('') + '<th style="width:7%">操作</th></tr>';
+    const alignStyle = c === 'move_out_date' ? ' style="text-align:left"' : '';
+    return '<th data-col="' + c + '"' + alignStyle + '>' + esc(label) + '</th>';
+  }).join('') + '<th>操作</th></tr>';
 
   if (!list.length){
     tbody.innerHTML = '<tr><td colspan="' + (PARKING_COLS.length + 1) + '"><div class="empty-note">該当する駐車場契約がありません</div></td></tr>';
@@ -1113,11 +1127,12 @@ function renderParking(){
   }
   tbody.innerHTML = list.map(function(r){
     const cells = PARKING_COLS.map(function(c){
-      if (c === 'status') return '<td><span class="status-chip status-' + r.status + '">' + esc(r.status) + '</span></td>';
-      if (c === 'record_type') return '<td><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
-      return '<td>' + esc(r[c]) + '</td>';
+      const alignAttr = PARKING_COL_CENTER[c] ? ' style="text-align:center"' : '';
+      if (c === 'status') return '<td' + alignAttr + '><span class="status-chip status-' + r.status + '">' + esc(r.status) + '</span></td>';
+      if (c === 'record_type') return '<td' + alignAttr + '><span class="status-chip status-' + r.record_type + '">' + esc(r.record_type) + '</span></td>';
+      return '<td' + alignAttr + '>' + esc(r[c]) + '</td>';
     }).join('');
-    return '<tr>' + cells + '<td class="row-actions"><button data-action="edit-parking" data-id="' + r.id + '">編集</button></td></tr>';
+    return '<tr>' + cells + '<td class="row-actions" style="text-align:center"><button data-action="edit-parking" data-id="' + r.id + '">編集</button></td></tr>';
   }).join('');
 }
 
@@ -1292,22 +1307,22 @@ function renderInspections(){
   const list = filteredInspections();
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:22%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:8%">担当者</th><th style="width:6%">操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:11%">担当者</th><th style="width:6%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
     return '<tr>' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
-      '<td>' + esc(row.contract.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(row.contract.contract_date) + '</td>' +
       '<td>' + esc(row.contract.move_in_confirmed_date) + '</td>' +
       '<td>' + esc(r ? r.inspection_scheduled_date : '') + '</td>' +
       '<td>' + esc(r ? r.key_exchange_due_date : '') + '</td>' +
-      '<td>' + esc(r ? r.ignition_test_done : '') + '</td>' +
-      '<td>' + esc(row.contract.disinfection_status) + '</td>' +
+      '<td style="text-align:center">' + esc(r ? r.ignition_test_done : '') + '</td>' +
+      '<td style="text-align:center">' + esc(row.contract.disinfection_status) + '</td>' +
       '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
-      '<td>' + esc(r ? r.inspector : '') + '</td>' +
-      '<td class="row-actions"><button data-action="edit-inspection" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
+      '<td style="text-align:center">' + esc(r ? r.inspector : '') + '</td>' +
+      '<td class="row-actions" style="text-align:center"><button data-action="edit-inspection" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -1352,7 +1367,7 @@ function renderRestorations(){
   const list = filteredRestorations();
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:18%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%">退去日</th><th style="width:12%">業者名</th><th style="width:7%">発注日</th><th style="width:7%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:6%">担当者</th><th style="width:6%">操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:18%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%;text-align:left">退去日</th><th style="width:8%">業者名</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:6%">担当者</th><th style="width:6%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(row){
@@ -1363,24 +1378,24 @@ function renderRestorations(){
     if (profit != null) totalProfit += profit;
     return '<tr>' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
-      '<td>' + esc(row.contract.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(row.contract.move_out_date) + '</td>' +
       '<td>' + esc(r ? r.vendor : '') + '</td>' +
       '<td>' + esc(r ? r.order_date : '') + '</td>' +
       '<td>' + esc(r ? r.completed_date : '') + '</td>' +
       '<td>' + esc(r ? r.completion_confirmed_date : '') + '</td>' +
-      '<td>' + (r ? fmtMoney(r.revenue) : '') + '</td>' +
-      '<td>' + (r ? fmtMoney(r.cost) : '') + '</td>' +
-      '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
-      '<td>' + esc(r ? r.staff : '') + '</td>' +
-      '<td class="row-actions"><button data-action="edit-restoration" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
+      '<td style="text-align:right">' + (r ? fmtMoney(r.revenue) : '') + '</td>' +
+      '<td style="text-align:right">' + (r ? fmtMoney(r.cost) : '') + '</td>' +
+      '<td style="text-align:right">' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
+      '<td style="text-align:center">' + esc(r ? r.staff : '') + '</td>' +
+      '<td class="row-actions" style="text-align:center"><button data-action="edit-restoration" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
   const totalRow = '<tr class="total-row">' +
     '<td colspan="7">合計金額</td>' +
-    '<td>' + fmtMoney(totalRevenue) + '</td>' +
-    '<td>' + fmtMoney(totalCost) + '</td>' +
-    '<td>' + fmtMoney(totalProfit) + '</td>' +
+    '<td style="text-align:right">' + fmtMoney(totalRevenue) + '</td>' +
+    '<td style="text-align:right">' + fmtMoney(totalCost) + '</td>' +
+    '<td style="text-align:right">' + fmtMoney(totalProfit) + '</td>' +
     '<td></td><td></td>' +
   '</tr>';
   tbody.innerHTML = rowsHtml + totalRow;
@@ -1609,14 +1624,14 @@ function renderPower(){
     const r = row.power;
     return '<tr>' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
-      '<td>' + esc(row.contract.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
       '<td>' + esc(r ? r.power_on_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_on_date : '') + '</td>' +
       '<td>' + esc(r ? r.water_supply_start_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_request_date : '') + '</td>' +
       '<td>' + esc(r ? r.power_off_date : '') + '</td>' +
       '<td>' + esc(r ? r.water_supply_stop_date : '') + '</td>' +
-      '<td class="row-actions"><button data-action="edit-power" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
+      '<td class="row-actions" style="text-align:center"><button data-action="edit-power" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -1801,7 +1816,7 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:5%">区分</th><th style="width:14%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:16%">工事内容</th><th style="width:9%">業者名</th><th style="width:7%">入電日</th><th style="width:7%">発注日</th><th style="width:7%">完了日</th><th style="width:6%">売上</th><th style="width:6%">原価</th><th style="width:6%">利益</th><th style="width:6%">担当者</th><th style="width:6%">操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:5%">区分</th><th style="width:14%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:16%">工事内容</th><th style="width:6%">業者名</th><th style="width:8%">入電日</th><th style="width:8%">発注日</th><th style="width:8%">完了日</th><th style="width:7%">売上</th><th style="width:6%">原価</th><th style="width:7%">利益</th><th style="width:4%">担当者</th><th style="width:6%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="13"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(r){
@@ -1812,7 +1827,7 @@ function renderWorkOrders(){
     return '<tr>' +
       '<td>' + esc(r.work_type) + '</td>' +
       '<td>' + esc(r.property_name) + '</td>' +
-      '<td>' + esc(r.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(r.room_no) + '</td>' +
       '<td>' + esc(r.work_content) + '</td>' +
       '<td>' + esc(r.vendor) + '</td>' +
       '<td>' + esc(r.inquiry_date) + '</td>' +
@@ -1821,8 +1836,8 @@ function renderWorkOrders(){
       '<td>' + fmtMoney(r.revenue) + '</td>' +
       '<td>' + fmtMoney(r.cost) + '</td>' +
       '<td>' + (profit == null ? '' : fmtMoney(profit)) + '</td>' +
-      '<td>' + esc(r.site_staff) + '</td>' +
-      '<td class="row-actions"><button data-action="edit-workorder" data-id="' + r.id + '">編集</button></td>' +
+      '<td style="text-align:center">' + esc(r.site_staff) + '</td>' +
+      '<td class="row-actions" style="text-align:center"><button data-action="edit-workorder" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
   const totalRow = '<tr class="total-row">' +
@@ -1925,14 +1940,14 @@ function renderComplaints(){
   const list = filteredComplaints();
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:7%">受付日</th><th style="width:6%">受付方法</th><th style="width:12%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:8%">入居者名</th><th style="width:9%">連絡先</th><th style="width:16%">内容</th><th style="width:16%">対応内容①</th><th style="width:6%">対応状況</th><th style="width:6%">④設備工事</th><th style="width:5%">対応者</th><th style="width:4%">操作</th></tr>';
+  thead.innerHTML = '<tr><th>受付日</th><th>受付方法</th><th>対象物件</th><th>部屋番号</th><th>入居者名</th><th>連絡先</th><th>内容</th><th>対応内容①</th><th>対応状況</th><th>④設備工事</th><th>対応者</th><th>操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(r){
     return '<tr>' +
       '<td>' + esc(r.received_date) + '</td>' +
       '<td>' + esc(r.received_method) + '</td>' +
       '<td>' + esc(r.property_name) + '</td>' +
-      '<td>' + esc(r.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(r.room_no) + '</td>' +
       '<td>' + esc(r.resident_name) + '</td>' +
       '<td>' + esc(r.contact) + '</td>' +
       '<td class="wrap-cell">' + esc(r.content) + '</td>' +
@@ -1940,7 +1955,7 @@ function renderComplaints(){
       '<td><span class="status-chip status-' + esc(r.status) + '">' + esc(r.status) + '</span></td>' +
       '<td>' + (r.moved_to_workorder ? '<span class="moved-badge">登録済</span>' : '<span class="moved-badge not-moved">未登録</span>') + '</td>' +
       '<td>' + esc(r.handled_by) + '</td>' +
-      '<td class="row-actions"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
+      '<td class="row-actions" style="text-align:center"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -2075,14 +2090,14 @@ function renderGaps(){
 
   const table = document.getElementById('table-gaps');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th data-col="tag" style="width:8%">タグ</th><th data-col="label" style="width:25%">対象</th><th style="width:57%">内容</th><th style="width:10%">操作</th></tr>';
+  thead.innerHTML = '<tr><th data-col="tag" style="width:5%">タグ</th><th data-col="label" style="width:25%">対象</th><th style="width:65%">内容</th><th style="width:5%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="4"><div class="empty-note">現在、抜け漏れの可能性がある項目はありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(it, idx){
     return '<tr>' +
       '<td><span class="status-chip status-' + esc(it.tag) + '">' + esc(it.tag) + '</span></td>' +
       '<td>' + esc(it.label) + '</td>' +
       '<td>' + esc(it.text) + '</td>' +
-      '<td class="row-actions"><button data-action="open-gap" data-idx="' + idx + '">開く</button></td>' +
+      '<td class="row-actions" style="text-align:center"><button data-action="open-gap" data-idx="' + idx + '">開く</button></td>' +
     '</tr>';
   }).join('');
 }
