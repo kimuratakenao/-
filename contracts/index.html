@@ -1583,7 +1583,7 @@ function wireEmptyFieldHighlighting(){
     wrap.classList.toggle('field-unfilled', empty);
   }
   modal.querySelectorAll('[data-key]').forEach(function(el){
-    if (el.type === 'checkbox') return;
+    if (el.type === 'checkbox' || el.type === 'date') return;
     update(el);
     el.addEventListener('input', function(){ update(el); });
     el.addEventListener('change', function(){ update(el); });
