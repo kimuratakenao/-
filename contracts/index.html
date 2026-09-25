@@ -1343,10 +1343,11 @@ function renderInspections(){
   const list = filteredInspections();
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:22%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:14%">担当者</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="10"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:22%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:6%">通電停止</th><th style="width:8%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
+    const powerOff = priorTenantPowerOffDate(row.contract);
     return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
@@ -1357,6 +1358,7 @@ function renderInspections(){
       '<td style="text-align:center">' + esc(r ? r.ignition_test_done : '') + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.disinfection_status) + '</td>' +
       '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
+      '<td style="text-align:center">' + (powerOff ? '<span class="moved-badge">停止済</span>' : '<span class="moved-badge not-moved">未停止</span>') + '</td>' +
       '<td style="text-align:center">' + esc(r ? r.inspector : '') + '</td>' +
     '</tr>';
   }).join('');
@@ -1505,6 +1507,16 @@ function openRecordModal(table, fields, title, record, presetContractId){
   wireEmptyFieldHighlighting();
 }
 
+// ②入居前点検向け：同じ物件・部屋番号の直近の解約契約に紐づく⑦の通電停止日を返す（前の入居者の電気が止まったかの目安）
+function priorTenantPowerOffDate(contract){
+  if (!contract) return null;
+  const latestMoveOut = contracts
+    .filter(function(x){ return x.property_name === contract.property_name && x.room_no === contract.room_no && x.record_type === '解約'; })
+    .sort(function(a, b){ return (a.move_out_date || '') > (b.move_out_date || '') ? -1 : 1; })[0];
+  if (!latestMoveOut) return null;
+  const pow = latestByContract(powerRecords, latestMoveOut.id);
+  return pow ? pow.power_off_date : null;
+}
 // 対象物件（契約）の選択に応じて、①側の情報を読み取り専用で表示する（②の入居予定日・入居確定日・消毒施工など）
 function updateContractLinkedDisplays(){
   const select = document.querySelector('#modal [data-key="contract_id"]');
@@ -1515,12 +1527,6 @@ function updateContractLinkedDisplays(){
     .filter(function(x){ return x.property_name === c.property_name && x.room_no === c.room_no && x.record_type === '契約' && x.move_in_confirmed_date; })
     .sort(function(a, b){ return (a.move_in_confirmed_date || '') > (b.move_in_confirmed_date || '') ? -1 : 1; })[0]
     : null;
-  // ②入居前点検の参考表示：同じ物件・部屋番号の直近の解約契約に紐づく⑦の通電停止日を拾う（前の入居者の電気が止まったかの目安）
-  const latestMoveOut = c ? contracts
-    .filter(function(x){ return x.property_name === c.property_name && x.room_no === c.room_no && x.record_type === '解約'; })
-    .sort(function(a, b){ return (a.move_out_date || '') > (b.move_out_date || '') ? -1 : 1; })[0]
-    : null;
-  const moveOutPower = latestMoveOut ? latestByContract(powerRecords, latestMoveOut.id) : null;
   const map = {
     move_in_scheduled_display: c ? c.contract_date : null,
     move_in_confirmed_display: c ? c.move_in_confirmed_date : null,
@@ -1530,7 +1536,7 @@ function updateContractLinkedDisplays(){
     move_out_date_display: c ? c.move_out_date : null,
     move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
     room_no_display: c ? c.room_no : null,
-    power_off_display: moveOutPower ? moveOutPower.power_off_date : null,
+    power_off_display: priorTenantPowerOffDate(c),
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
