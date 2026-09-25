@@ -1077,7 +1077,7 @@ async function saveContract(record){
 // =========================================================
 const PARKING_COLS = ['record_type','property_name','room_no','contract_name','contract_start_date','move_out_date','status','assignee'];
 const ALL_PARKING_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
-const PARKING_COL_CENTER = { room_no:true, assignee:true };
+const PARKING_COL_CENTER = { record_type:true, room_no:true, status:true, assignee:true };
 const PARKING_COL_WIDTHS = { record_type:6, property_name:20, room_no:6, contract_name:20, contract_start_date:12, move_out_date:12, status:11, assignee:7 };
 
 // 駐車場：鍵の受け渡しがない代わりに契約開始日を「引渡済」の基準にする
@@ -1817,7 +1817,7 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:5%">区分</th><th style="width:11%">対象物件</th><th style="width:4%">部屋番号</th><th style="width:19%">工事内容</th><th style="width:6%">業者名</th><th style="width:7%">入電日</th><th style="width:7%">発注日</th><th style="width:7%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th><th style="width:4%">操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:4%">区分</th><th style="width:9%">対象物件</th><th style="width:3%">部屋番号</th><th style="width:17%">工事内容</th><th style="width:6%">業者名</th><th style="width:9%">入電日</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th><th style="width:4%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="13"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(r){
@@ -1941,21 +1941,21 @@ function renderComplaints(){
   const list = filteredComplaints();
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:7%">受付日</th><th style="width:6%">受付方法</th><th style="width:12%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:8%">入居者名</th><th style="width:9%">連絡先</th><th style="width:16%">内容</th><th style="width:16%">対応内容①</th><th style="width:6%">対応状況</th><th style="width:6%">④設備工事</th><th style="width:5%">対応者</th><th style="width:4%">操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:9%">受付日</th><th style="width:6%">受付方法</th><th style="width:11%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:7%">入居者名</th><th style="width:8%">連絡先</th><th style="width:14%">内容</th><th style="width:14%">対応内容①</th><th style="width:8%">対応状況</th><th style="width:9%">④設備工事</th><th style="width:5%">対応者</th><th style="width:4%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(r){
     return '<tr>' +
       '<td>' + esc(r.received_date) + '</td>' +
-      '<td>' + esc(r.received_method) + '</td>' +
+      '<td style="text-align:center">' + esc(r.received_method) + '</td>' +
       '<td>' + esc(r.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(r.room_no) + '</td>' +
-      '<td>' + esc(r.resident_name) + '</td>' +
+      '<td style="text-align:center">' + esc(r.resident_name) + '</td>' +
       '<td>' + esc(r.contact) + '</td>' +
       '<td class="wrap-cell">' + esc(r.content) + '</td>' +
       '<td class="wrap-cell">' + esc(r.response1) + '</td>' +
-      '<td><span class="status-chip status-' + esc(r.status) + '">' + esc(r.status) + '</span></td>' +
-      '<td>' + (r.moved_to_workorder ? '<span class="moved-badge">登録済</span>' : '<span class="moved-badge not-moved">未登録</span>') + '</td>' +
-      '<td>' + esc(r.handled_by) + '</td>' +
+      '<td style="text-align:center"><span class="status-chip status-' + esc(r.status) + '">' + esc(r.status) + '</span></td>' +
+      '<td style="text-align:center">' + (r.moved_to_workorder ? '<span class="moved-badge">登録済</span>' : '<span class="moved-badge not-moved">未登録</span>') + '</td>' +
+      '<td style="text-align:center">' + esc(r.handled_by) + '</td>' +
       '<td class="row-actions" style="text-align:center"><button data-action="edit-complaint" data-id="' + r.id + '">編集</button></td>' +
     '</tr>';
   }).join('');
@@ -2095,7 +2095,7 @@ function renderGaps(){
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="4"><div class="empty-note">現在、抜け漏れの可能性がある項目はありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(it, idx){
     return '<tr>' +
-      '<td><span class="status-chip status-' + esc(it.tag) + '">' + esc(it.tag) + '</span></td>' +
+      '<td style="text-align:center"><span class="status-chip status-' + esc(it.tag) + '">' + esc(it.tag) + '</span></td>' +
       '<td>' + esc(it.label) + '</td>' +
       '<td>' + esc(it.text) + '</td>' +
       '<td class="row-actions" style="text-align:center"><button data-action="open-gap" data-idx="' + idx + '">開く</button></td>' +
