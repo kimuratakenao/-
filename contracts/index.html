@@ -583,19 +583,21 @@ const POWER_NEW_FIELDS = {
   move_out_walkthrough_display:{ label:'退去立会日', type:'computed' },
   power_on_staff:{ label:'通電担当者', type:'text', suggest:'name' },
   power_on_request_date:{ label:'通電依頼日', type:'date' },
+  power_on_web_application_no:{ label:'WEB申込番号', type:'text' },
   water_heater_request_date:{ label:'電気温水器通電依頼日', type:'date' },
   power_on_date:{ label:'通電開始日', type:'date' },
+  water_supply_request_date:{ label:'通水依頼日', type:'date' },
   water_supply_start_date:{ label:'通水開始日', type:'date' },
-  power_on_web_application_no:{ label:'WEB申込番号', type:'text' },
 };
 // 停止ツール（通電停止）：①契約の入居確定日を参照
 const POWER_MOVEOUT_FIELDS = {
   latest_move_in_confirmed_display:{ label:'入居日', type:'computed' },
   power_off_staff:{ label:'停止担当者', type:'text', suggest:'name' },
-  power_off_request_date:{ label:'通電停止依頼日', type:'date', full:true },
-  power_off_date:{ label:'通電停止日', type:'date' },
-  water_supply_stop_date:{ label:'通水停止日', type:'date' },
+  power_off_request_date:{ label:'通電停止依頼日', type:'date' },
   power_off_web_application_no:{ label:'WEB申込番号', type:'text' },
+  power_off_date:{ label:'通電停止日', type:'date', full:true },
+  water_supply_stop_request_date:{ label:'通水停止依頼日', type:'date' },
+  water_supply_stop_date:{ label:'通水停止日', type:'date' },
 };
 const POWER_NOTES_FIELD = {
   notes:{ label:'備考', type:'textarea' },
@@ -1347,7 +1349,7 @@ function renderInspections(){
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
-    const powerOff = priorTenantPowerOffDate(row.contract);
+    const powerStop = priorTenantPowerStopInfo(row.contract);
     return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
@@ -1358,7 +1360,7 @@ function renderInspections(){
       '<td style="text-align:center">' + esc(r ? r.ignition_test_done : '') + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.disinfection_status) + '</td>' +
       '<td>' + esc(r ? r.inspection_completed_date : '') + '</td>' +
-      '<td style="text-align:center">' + (powerOff ? '<span class="moved-badge">停止済</span>' : '') + '</td>' +
+      '<td style="text-align:center">' + (powerStop.requested ? '<span class="moved-badge">停止済</span>' : '') + '</td>' +
       '<td style="text-align:center">' + esc(r ? r.inspector : '') + '</td>' +
     '</tr>';
   }).join('');
@@ -1507,15 +1509,20 @@ function openRecordModal(table, fields, title, record, presetContractId){
   wireEmptyFieldHighlighting();
 }
 
-// ②入居前点検向け：同じ物件・部屋番号の直近の解約契約に紐づく⑦の通電停止日を返す（前の入居者の電気が止まったかの目安）
-function priorTenantPowerOffDate(contract){
-  if (!contract) return null;
+// ②入居前点検向け：同じ物件・部屋番号の直近の解約契約に紐づく⑦の通電・通水停止状況を返す
+// （前の入居者の電気・水道が止まったかの目安。通電停止依頼日または通水停止依頼日が
+//  入力された時点で「停止済」とみなす。dateは表示用に、実際の停止日があればそれを、
+//  無ければ依頼日を返す）
+function priorTenantPowerStopInfo(contract){
+  if (!contract) return { requested:false, date:null };
   const latestMoveOut = contracts
     .filter(function(x){ return x.property_name === contract.property_name && x.room_no === contract.room_no && x.record_type === '解約'; })
     .sort(function(a, b){ return (a.move_out_date || '') > (b.move_out_date || '') ? -1 : 1; })[0];
-  if (!latestMoveOut) return null;
-  const pow = latestByContract(powerRecords, latestMoveOut.id);
-  return pow ? pow.power_off_date : null;
+  const pow = latestMoveOut ? latestByContract(powerRecords, latestMoveOut.id) : null;
+  if (!pow) return { requested:false, date:null };
+  const requested = !!(pow.power_off_request_date || pow.water_supply_stop_request_date);
+  const date = pow.power_off_date || pow.power_off_request_date || pow.water_supply_stop_request_date || null;
+  return { requested: requested, date: date };
 }
 // 対象物件（契約）の選択に応じて、①側の情報を読み取り専用で表示する（②の入居予定日・入居確定日・消毒施工など）
 function updateContractLinkedDisplays(){
@@ -1536,7 +1543,7 @@ function updateContractLinkedDisplays(){
     move_out_date_display: c ? c.move_out_date : null,
     move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
     room_no_display: c ? c.room_no : null,
-    power_off_display: priorTenantPowerOffDate(c),
+    power_off_display: priorTenantPowerStopInfo(c).date,
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
