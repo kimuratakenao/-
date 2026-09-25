@@ -1605,7 +1605,7 @@ function filteredPower(all){
   const search = document.getElementById('search-power').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-power').value;
   return contracts
-    .filter(function(c){ return c.record_type === '解約' && c.move_out_walkthrough_date; })
+    .filter(function(c){ return c.record_type === '解約' && (c.move_out_walkthrough_date || c.move_out_date); })
     .map(function(c){ return { contract:c, power: latestByContract(powerRecords, c.id) }; })
     .filter(function(row){
       if (all) return true;
