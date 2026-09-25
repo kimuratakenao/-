@@ -317,6 +317,7 @@ tbody tr.clickable-row{cursor:pointer;}
   <section class="panel" id="panel-parking" hidden>
     <div class="toolbar">
       <input type="text" id="search-parking" placeholder="物件名・部屋番号・氏名で検索">
+      <input type="month" id="month-filter-parking" title="入居希望日・入居確定日・退去日検索（月）">
       <select id="type-filter-parking">
         <option value="">区分: すべて</option>
         <option value="契約">契約</option>
@@ -361,6 +362,7 @@ tbody tr.clickable-row{cursor:pointer;}
     <div class="note-box">入居者からのクレーム・問い合わせを1件ずつ記録します。契約とは紐づかず、物件・号室単位で独立して管理します。</div>
     <div class="toolbar">
       <input type="text" id="search-complaints" placeholder="物件名・部屋番号・氏名・内容で検索">
+      <input type="month" id="month-filter-complaints" title="受付日検索（月）">
       <select id="status-filter-complaints">
         <option value="">対応状況: すべて</option>
         <option value="未対応">未対応</option>
@@ -1128,6 +1130,7 @@ function parkingStatus(r){
 
 function filteredParking(all){
   const search = document.getElementById('search-parking').value.trim().toLowerCase();
+  const monthFilter = document.getElementById('month-filter-parking').value;
   const statusFilter = document.getElementById('status-filter-parking').value;
   const typeFilter = document.getElementById('type-filter-parking').value;
   const closedFilter = document.getElementById('closed-filter-parking').value;
@@ -1135,7 +1138,8 @@ function filteredParking(all){
   list = list.filter(function(r){
     if (all) return true;
     const hay = [r.property_name, r.room_no, r.contract_name].join(' ').toLowerCase();
-    return (!search || hay.indexOf(search) !== -1) && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
+    const matchesMonth = !monthFilter || [r.contract_date, r.move_in_confirmed_date, r.move_out_date].some(function(d){ return d && d.slice(0,7) === monthFilter; });
+    return (!search || hay.indexOf(search) !== -1) && matchesMonth && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
   });
   const s = sort.parking;
   list.sort(function(a, b){
@@ -1187,6 +1191,7 @@ document.getElementById('table-parking').addEventListener('click', function(e){
   if (tr) openParkingModal(parkingContracts.find(function(r){ return r.id === tr.getAttribute('data-id'); }));
 });
 document.getElementById('search-parking').addEventListener('input', renderParking);
+document.getElementById('month-filter-parking').addEventListener('change', renderParking);
 document.getElementById('status-filter-parking').addEventListener('change', renderParking);
 document.getElementById('type-filter-parking').addEventListener('change', renderParking);
 document.getElementById('closed-filter-parking').addEventListener('change', renderParking);
@@ -1510,8 +1515,8 @@ function openRecordModal(table, fields, title, record, presetContractId){
 }
 
 // ②入居前点検向け：同じ物件・部屋番号の直近の解約契約に紐づく⑦の通電・通水停止状況を返す
-// （前の入居者の電気・水道が止まったかの目安。通電停止依頼日または通水停止依頼日が
-//  入力された時点で「停止済」とみなす。dateは表示用に、実際の停止日があればそれを、
+// （前の入居者の電気・水道が止まったかの目安。通電停止依頼日と通水停止依頼日の
+//  両方が入力された時点で「停止済」とみなす。dateは表示用に、実際の停止日があればそれを、
 //  無ければ依頼日を返す）
 function priorTenantPowerStopInfo(contract){
   if (!contract) return { requested:false, date:null };
@@ -1520,7 +1525,7 @@ function priorTenantPowerStopInfo(contract){
     .sort(function(a, b){ return (a.move_out_date || '') > (b.move_out_date || '') ? -1 : 1; })[0];
   const pow = latestMoveOut ? latestByContract(powerRecords, latestMoveOut.id) : null;
   if (!pow) return { requested:false, date:null };
-  const requested = !!(pow.power_off_request_date || pow.water_supply_stop_request_date);
+  const requested = !!(pow.power_off_request_date && pow.water_supply_stop_request_date);
   const date = pow.power_off_date || pow.power_off_request_date || pow.water_supply_stop_request_date || null;
   return { requested: requested, date: date };
 }
@@ -1973,6 +1978,7 @@ function openComplaintModal(record){
 
 function filteredComplaints(all){
   const search = document.getElementById('search-complaints').value.trim().toLowerCase();
+  const monthFilter = document.getElementById('month-filter-complaints').value;
   const statusFilter = document.getElementById('status-filter-complaints').value;
   const closedFilter = document.getElementById('closed-filter-complaints').value;
   return complaints
@@ -1980,8 +1986,9 @@ function filteredComplaints(all){
       if (all) return true;
       const hay = ((r.property_name || '') + ' ' + (r.room_no || '') + ' ' + (r.resident_name || '') + ' ' + (r.content || '')).toLowerCase();
       const matchesSearch = !search || hay.indexOf(search) !== -1;
+      const matchesMonth = !monthFilter || (r.received_date && r.received_date.slice(0,7) === monthFilter);
       const matchesStatus = !statusFilter || r.status === statusFilter;
-      return matchesSearch && matchesStatus && matchesClosedFilter(closedFilter, r.is_closed);
+      return matchesSearch && matchesMonth && matchesStatus && matchesClosedFilter(closedFilter, r.is_closed);
     })
     .sort(function(a, b){
       const av = a.received_date, bv = b.received_date;
@@ -2034,6 +2041,7 @@ document.getElementById('table-complaints').addEventListener('click', function(e
   if (tr) openComplaintModal(complaints.find(function(r){ return r.id === tr.getAttribute('data-id'); }));
 });
 document.getElementById('search-complaints').addEventListener('input', renderComplaints);
+document.getElementById('month-filter-complaints').addEventListener('change', renderComplaints);
 document.getElementById('status-filter-complaints').addEventListener('change', renderComplaints);
 document.getElementById('closed-filter-complaints').addEventListener('change', renderComplaints);
 document.getElementById('add-complaint').addEventListener('click', function(){ openComplaintModal(null); });
