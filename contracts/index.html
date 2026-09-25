@@ -847,6 +847,8 @@ function filteredContracts(all){
 
 const CONTRACT_COLS = ['record_type','property_name','room_no','contract_name','contract_date','move_in_confirmed_date','move_out_date','status','assignee'];
 const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
+// 列幅：物件名・契約者名を広めに、区分・部屋番号・日付・担当者・操作は詰める
+const CONTRACT_COL_WIDTHS = { record_type:6, property_name:20, room_no:6, contract_name:14, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:10, assignee:8 };
 const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
 function renderContracts(){
@@ -855,8 +857,8 @@ function renderContracts(){
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr>' + CONTRACT_COLS.map(function(c){
     const label = CONTRACT_COL_LABELS[c] || ALL_CONTRACT_FIELD_DEFS[c].label;
-    return '<th data-col="' + c + '">' + esc(label) + '</th>';
-  }).join('') + '<th>操作</th></tr>';
+    return '<th data-col="' + c + '" style="width:' + CONTRACT_COL_WIDTHS[c] + '%">' + esc(label) + '</th>';
+  }).join('') + '<th style="width:6%">操作</th></tr>';
 
   if (!list.length){
     tbody.innerHTML = '<tr><td colspan="' + (CONTRACT_COLS.length + 1) + '"><div class="empty-note">該当する契約がありません</div></td></tr>';
@@ -1061,6 +1063,7 @@ async function saveContract(record){
 // ⑥ 駐車場（①と同じ内容だが、入居者名・連絡先（入居者）は不要）
 // =========================================================
 const PARKING_COLS = ['record_type','property_name','room_no','contract_name','contract_start_date','move_out_date','status','assignee'];
+const PARKING_COL_WIDTHS = { record_type:7, property_name:22, room_no:7, contract_name:16, contract_start_date:11, move_out_date:11, status:11, assignee:8 };
 const ALL_PARKING_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
 // 駐車場：鍵の受け渡しがない代わりに契約開始日を「引渡済」の基準にする
@@ -1101,8 +1104,8 @@ function renderParking(){
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
   thead.innerHTML = '<tr>' + PARKING_COLS.map(function(c){
     const label = CONTRACT_COL_LABELS[c] || ALL_PARKING_FIELD_DEFS[c].label;
-    return '<th data-col="' + c + '">' + esc(label) + '</th>';
-  }).join('') + '<th>操作</th></tr>';
+    return '<th data-col="' + c + '" style="width:' + PARKING_COL_WIDTHS[c] + '%">' + esc(label) + '</th>';
+  }).join('') + '<th style="width:7%">操作</th></tr>';
 
   if (!list.length){
     tbody.innerHTML = '<tr><td colspan="' + (PARKING_COLS.length + 1) + '"><div class="empty-note">該当する駐車場契約がありません</div></td></tr>';
@@ -1289,7 +1292,7 @@ function renderInspections(){
   const list = filteredInspections();
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>対象物件</th><th>部屋番号</th><th>入居予定日</th><th>入居確定日</th><th>点検予定日</th><th>鍵交換期日</th><th>点火試験</th><th>消毒施工</th><th>点検完了日</th><th>担当者</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:22%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:8%">担当者</th><th style="width:6%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
@@ -1349,7 +1352,7 @@ function renderRestorations(){
   const list = filteredRestorations();
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>対象物件</th><th>部屋番号</th><th>退去日</th><th>業者名</th><th>発注日</th><th>完了日</th><th>完了確認日</th><th>売上</th><th>原価</th><th>粗利</th><th>担当者</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:18%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%">退去日</th><th style="width:12%">業者名</th><th style="width:7%">発注日</th><th style="width:7%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:6%">担当者</th><th style="width:6%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(row){
@@ -1600,7 +1603,7 @@ function renderPower(){
   const list = filteredPower();
   const table = document.getElementById('table-power');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>物件名</th><th>部屋番号</th><th>通電依頼日</th><th>通電開始日</th><th>通水開始日</th><th>通電停止依頼日</th><th>通電停止日</th><th>通水停止日</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:24%">物件名</th><th style="width:8%">部屋番号</th><th style="width:10%">通電依頼日</th><th style="width:10%">通電開始日</th><th style="width:10%">通水開始日</th><th style="width:10%">通電停止依頼日</th><th style="width:10%">通電停止日</th><th style="width:10%">通水停止日</th><th style="width:8%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="9"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.power;
@@ -1798,7 +1801,7 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>区分</th><th>対象物件</th><th>部屋番号</th><th>工事内容</th><th>業者名</th><th>入電日</th><th>発注日</th><th>完了日</th><th>売上</th><th>原価</th><th>利益</th><th>担当者</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:5%">区分</th><th style="width:14%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:16%">工事内容</th><th style="width:9%">業者名</th><th style="width:7%">入電日</th><th style="width:7%">発注日</th><th style="width:7%">完了日</th><th style="width:6%">売上</th><th style="width:6%">原価</th><th style="width:6%">利益</th><th style="width:6%">担当者</th><th style="width:6%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="13"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(r){
@@ -1922,7 +1925,7 @@ function renderComplaints(){
   const list = filteredComplaints();
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th>受付日</th><th>受付方法</th><th>対象物件</th><th>部屋番号</th><th>入居者名</th><th>連絡先</th><th>内容</th><th>対応内容①</th><th>対応状況</th><th>④設備工事</th><th>対応者</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th style="width:7%">受付日</th><th style="width:6%">受付方法</th><th style="width:12%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:8%">入居者名</th><th style="width:9%">連絡先</th><th style="width:16%">内容</th><th style="width:16%">対応内容①</th><th style="width:6%">対応状況</th><th style="width:6%">④設備工事</th><th style="width:5%">対応者</th><th style="width:4%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(r){
     return '<tr>' +
@@ -2072,7 +2075,7 @@ function renderGaps(){
 
   const table = document.getElementById('table-gaps');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th data-col="tag">タグ</th><th data-col="label">対象</th><th>内容</th><th>操作</th></tr>';
+  thead.innerHTML = '<tr><th data-col="tag" style="width:8%">タグ</th><th data-col="label" style="width:25%">対象</th><th style="width:57%">内容</th><th style="width:10%">操作</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="4"><div class="empty-note">現在、抜け漏れの可能性がある項目はありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(it, idx){
     return '<tr>' +
