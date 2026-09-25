@@ -108,6 +108,7 @@ tbody tr.row-highlight{background:var(--orange-soft);}
 .status-未対象{background:var(--surface-2); color:var(--ink-soft);}
 .status-契約{background:var(--navy-soft); color:var(--navy-ink);}
 .status-解約{background:var(--danger-soft); color:var(--danger);}
+.status-入居前{background:var(--ok-soft); color:var(--ok);}
 .status-オーナー物件,.status-設備{background:var(--orange-soft); color:var(--orange-ink);}
 .status-自社物件{background:var(--ok-soft); color:var(--ok);}
 .status-未対応{background:var(--danger-soft); color:var(--danger);}
@@ -2001,10 +2002,10 @@ function computeGaps(){
     }
     if (tag === '契約'){
       if (c.move_in_confirmed_date && !insp.length){
-        items.push({ tag:tag, label:label, text: '入居確定日が入っているが、入居前点検の記録が未登録', open: function(){ openContractModal(c); } });
+        items.push({ tag:'入居前', label:label, text: '入居確定日が入っているが、入居前点検の記録が未登録', open: function(){ openContractModal(c); } });
       }
       if (c.key_receipt_collected_date && !insp.length){
-        items.push({ tag:tag, label:label, text: '鍵預り証は回収済みだが、入居前点検（鍵交換）の記録が未登録', open: function(){ openContractModal(c); } });
+        items.push({ tag:'入居前', label:label, text: '鍵預り証は回収済みだが、入居前点検（鍵交換）の記録が未登録', open: function(){ openContractModal(c); } });
       }
     }
 
@@ -2017,7 +2018,7 @@ function computeGaps(){
     insp.forEach(function(r){
       const b = blankFieldLabels(r, INSPECTION_FIELDS, ['notes','contract_id']);
       if (b.length){
-        items.push({ tag:'契約', label:label, text: '入居前点検の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', r); } });
+        items.push({ tag:'入居前', label:label, text: '入居前点検の未入力項目: ' + b.join('、'), open: function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', r); } });
       }
     });
     rest.forEach(function(r){
