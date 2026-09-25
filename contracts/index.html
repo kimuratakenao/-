@@ -1814,7 +1814,7 @@ function renderWorkOrders(){
   const list = filteredWorkOrders();
   const table = document.getElementById('table-workorders');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:4%">区分</th><th style="width:9%">対象物件</th><th style="width:3%">部屋番号</th><th style="width:21%">工事内容</th><th style="width:6%">業者名</th><th style="width:9%">入電日</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th></tr>';
+  thead.innerHTML = '<tr><th style="width:4%">区分</th><th style="width:11%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:16%">工事内容</th><th style="width:6%">業者名</th><th style="width:9%">入電日</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:9%">売上</th><th style="width:8%">原価</th><th style="width:9%">利益</th><th style="width:4%">担当者</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(r){
