@@ -170,6 +170,14 @@ tbody tr.clickable-row{cursor:pointer;}
 .field.field-unfilled input,.field.field-unfilled select,.field.field-unfilled textarea{
   border-color:var(--orange); background:var(--orange-soft);
 }
+.date-input-wrap{position:relative;}
+.date-input-wrap .na-badge{
+  display:none; position:absolute; inset:0; align-items:center; padding:0 10px;
+  border:1px solid var(--border); border-radius:6px; background:var(--surface);
+  color:var(--ink); font-size:13px; pointer-events:none;
+}
+.field.date-field.field-na .date-input-wrap input[type=date]{ opacity:0; }
+.field.date-field.field-na .na-badge{ display:flex; }
 .form-msg{font-size:12.5px; color:var(--danger); margin-top:10px; min-height:1em;}
 
 .detail-tabs{display:flex; gap:6px; margin-bottom:14px;}
@@ -540,6 +548,7 @@ const INSPECTION_FIELDS = {
   inspection_completed_date:{ label:'点検完了日', type:'date' },
   disinfection_display:{ label:'消毒施工', type:'computed' },
   cylinder_stock:{ label:'シリンダー在庫', type:'select', options:['○','×'] },
+  power_off_display:{ label:'⑦通電停止日（前入居者）', type:'computed' },
   power_stop_done:{ label:'電気停止手続', type:'bool' },
   notes:{ label:'備考', type:'textarea' },
 };
@@ -661,7 +670,11 @@ let returnToTab = null; // モーダルを閉じたら遷移前のタブに戻�
 let pendingComplaintTransfer = null; // ⑧から④に反映した新規保存が成功したら、元のクレームに移行済みフラグを立てる
 
 // ---- helpers ----
+// カレンダー入力で「-」を押すと、この日付を「対象外」として明示するためこの値を保存する
+// （<input type="date">はISO日付以外の文字を値として保持できないため、通常あり得ない日付を目印として使う）
+const NA_DATE = '1900-01-01';
 function esc(s){
+  if (s === NA_DATE) return '－';
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
   });
@@ -691,15 +704,28 @@ document.getElementById('modal-backdrop').addEventListener('compositionend', fun
   if (!el || !el.getAttribute || el.getAttribute('data-key') !== 'room_no') return;
   normalizeRoomNoInput(el);
 });
-// カレンダー入力欄で「-」キーを押すと日付を空欄に戻す（ネイティブの日付入力では直接「-」を入力できないため）
+// カレンダー入力欄で「-」キーを押すと「対象外」として確定する（黒字表示。ネイティブの日付入力に
+// 直接「-」は入力できないため、NA_DATEを内部値として保存し画面には「－」を表示する）。
+// 「対象外」状態からBackspace/Deleteキーを押すと、未入力（オレンジ表示）の状態に戻す。
 document.getElementById('modal-backdrop').addEventListener('keydown', function(e){
   const el = e.target;
   if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
-  if (e.key !== '-') return;
-  e.preventDefault();
-  el.value = '';
-  el.dispatchEvent(new Event('input', { bubbles:true }));
-  el.dispatchEvent(new Event('change', { bubbles:true }));
+  const wrap = el.closest('.field');
+  if (e.key === '-'){
+    e.preventDefault();
+    el.value = '';
+    if (wrap) wrap.classList.add('field-na');
+    el.dispatchEvent(new Event('input', { bubbles:true }));
+    el.dispatchEvent(new Event('change', { bubbles:true }));
+    return;
+  }
+  if ((e.key === 'Backspace' || e.key === 'Delete') && wrap && wrap.classList.contains('field-na')){
+    e.preventDefault();
+    el.value = '';
+    wrap.classList.remove('field-na');
+    el.dispatchEvent(new Event('input', { bubbles:true }));
+    el.dispatchEvent(new Event('change', { bubbles:true }));
+  }
 });
 
 function daysUntil(dateStr){
@@ -935,6 +961,13 @@ function renderField(key, f, val){
   const req = f.required ? ' <span class="req">*</span>' : '';
   const listAttr = f.suggest ? ' list="dl-' + f.suggest + '"' : '';
   const fullClass = f.full ? ' full' : '';
+  if (f.type === 'date'){
+    const isNA = val === NA_DATE;
+    const inputVal = isNA ? '' : (val == null ? '' : val);
+    return '<div class="field date-field' + fullClass + (isNA ? ' field-na' : '') + '"><label>' + esc(f.label) + req + '</label>' +
+      '<div class="date-input-wrap"><input type="date" data-key="' + key + '" value="' + esc(inputVal) + '">' +
+      '<div class="na-badge">－</div></div></div>';
+  }
   return '<div class="field' + fullClass + '"><label>' + esc(f.label) + req + '</label><input type="' + f.type + '" data-key="' + key + '" value="' + esc(val == null ? '' : val) + '"' + listAttr + '></div>';
 }
 
@@ -1056,7 +1089,8 @@ async function saveContract(record){
     const key = el.getAttribute('data-key');
     const f = allFields[key];
     if (f.type === 'bool'){ payload[key] = el.checked; return; }
-    let val = el.value.trim();
+    const isNA = f.type === 'date' && el.closest('.field').classList.contains('field-na');
+    let val = isNA ? NA_DATE : el.value.trim();
     if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
     payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
   });
@@ -1253,7 +1287,8 @@ async function saveParking(record){
     const key = el.getAttribute('data-key');
     const f = allFields[key];
     if (f.type === 'bool'){ payload[key] = el.checked; return; }
-    let val = el.value.trim();
+    const isNA = f.type === 'date' && el.closest('.field').classList.contains('field-na');
+    let val = isNA ? NA_DATE : el.value.trim();
     if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
     payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
   });
@@ -1480,6 +1515,12 @@ function updateContractLinkedDisplays(){
     .filter(function(x){ return x.property_name === c.property_name && x.room_no === c.room_no && x.record_type === '契約' && x.move_in_confirmed_date; })
     .sort(function(a, b){ return (a.move_in_confirmed_date || '') > (b.move_in_confirmed_date || '') ? -1 : 1; })[0]
     : null;
+  // ②入居前点検の参考表示：同じ物件・部屋番号の直近の解約契約に紐づく⑦の通電停止日を拾う（前の入居者の電気が止まったかの目安）
+  const latestMoveOut = c ? contracts
+    .filter(function(x){ return x.property_name === c.property_name && x.room_no === c.room_no && x.record_type === '解約'; })
+    .sort(function(a, b){ return (a.move_out_date || '') > (b.move_out_date || '') ? -1 : 1; })[0]
+    : null;
+  const moveOutPower = latestMoveOut ? latestByContract(powerRecords, latestMoveOut.id) : null;
   const map = {
     move_in_scheduled_display: c ? c.contract_date : null,
     move_in_confirmed_display: c ? c.move_in_confirmed_date : null,
@@ -1489,10 +1530,11 @@ function updateContractLinkedDisplays(){
     move_out_date_display: c ? c.move_out_date : null,
     move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
     room_no_display: c ? c.room_no : null,
+    power_off_display: moveOutPower ? moveOutPower.power_off_date : null,
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
-    if (out) out.textContent = map[key] || '—';
+    if (out) out.textContent = map[key] === NA_DATE ? '－' : (map[key] || '—');
   });
 }
 
@@ -1520,7 +1562,8 @@ async function saveRecord(table, fields, record){
     const key = el.getAttribute('data-key');
     const f = fields[key] || UPDATED_BY_FIELD[key];
     if (f.type === 'bool'){ payload[key] = el.checked; return; }
-    let val = el.value.trim();
+    const isNA = f.type === 'date' && el.closest('.field').classList.contains('field-na');
+    let val = isNA ? NA_DATE : el.value.trim();
     if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
     payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
   });
@@ -1579,11 +1622,13 @@ function wireEmptyFieldHighlighting(){
   function update(el){
     const wrap = el.closest('.field');
     if (!wrap) return;
-    const empty = !el.value || !el.value.trim();
+    if (el.type === 'date' && el.value) wrap.classList.remove('field-na');
+    const na = el.type === 'date' && wrap.classList.contains('field-na');
+    const empty = !na && (!el.value || !el.value.trim());
     wrap.classList.toggle('field-unfilled', empty);
   }
   modal.querySelectorAll('[data-key]').forEach(function(el){
-    if (el.type === 'checkbox' || el.type === 'date') return;
+    if (el.type === 'checkbox') return;
     update(el);
     el.addEventListener('input', function(){ update(el); });
     el.addEventListener('change', function(){ update(el); });
@@ -1774,7 +1819,8 @@ async function saveWorkOrder(record){
     const key = el.getAttribute('data-key');
     const f = allFields[key];
     if (f.type === 'bool'){ payload[key] = el.checked; return; }
-    let val = el.value.trim();
+    const isNA = f.type === 'date' && el.closest('.field').classList.contains('field-na');
+    let val = isNA ? NA_DATE : el.value.trim();
     if (f.required && !val){ el.classList.add('field-error'); if (!firstError) firstError = f.label + 'は必須です'; }
     payload[key] = val === '' ? null : (f.type === 'number' ? Number(val) : val);
   });
@@ -2119,7 +2165,8 @@ function exportCsv(name, list, cols, labelFn){
   const rows = list.map(function(r){
     return cols.map(function(c){
       let v = r[c];
-      if (typeof v === 'boolean') v = v ? '済' : '未';
+      if (v === NA_DATE) v = '－';
+      else if (typeof v === 'boolean') v = v ? '済' : '未';
       return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     });
   });
