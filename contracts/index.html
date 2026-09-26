@@ -2140,6 +2140,21 @@ function computeGaps(){
     }
   });
 
+  // ⑥駐車場：未入力項目チェック（①契約と同じ考え方。区分に応じた項目のみチェック）
+  parkingContracts.forEach(function(p){
+    const label = contractLabel(p);
+    const tag = p.record_type;
+    const basicFields = tag === '解約'
+      ? Object.assign({}, PARKING_COMMON_FIELDS, CANCEL_ONLY_FIELDS)
+      : Object.assign({}, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS);
+    const checklistFields = tag === '解約' ? PARKING_CANCEL_FIELDS : PARKING_NEW_FIELDS;
+    const fields = Object.assign({}, basicFields, checklistFields);
+    const blanks = blankFieldLabels(p, fields, ['notes','contract_checklist_notes']);
+    if (blanks.length){
+      items.push({ tag:tag, label:label, text: '駐車場の未入力項目: ' + blanks.join('、'), open: function(){ openParkingModal(p); } });
+    }
+  });
+
   return items;
 }
 
