@@ -322,7 +322,7 @@ tbody tr.clickable-row{cursor:pointer;}
   <section class="panel" id="panel-parking" hidden>
     <div class="toolbar">
       <input type="text" id="search-parking" placeholder="物件名・部屋番号・氏名で検索">
-      <input type="month" id="month-filter-parking" title="入居希望日・入居確定日・退去日検索（月）">
+      <input type="month" id="month-filter-parking" title="契約：契約開始日、解約：退去日で検索（月）">
       <select id="type-filter-parking">
         <option value="">区分: すべて</option>
         <option value="契約">契約</option>
@@ -1147,7 +1147,8 @@ function filteredParking(all){
   list = list.filter(function(r){
     if (all) return true;
     const hay = [r.property_name, r.room_no, r.contract_name].join(' ').toLowerCase();
-    const matchesMonth = !monthFilter || [r.contract_date, r.move_in_confirmed_date, r.move_out_date].some(function(d){ return d && d.slice(0,7) === monthFilter; });
+    const monthTargetDate = r.record_type === '解約' ? r.move_out_date : r.contract_start_date;
+    const matchesMonth = !monthFilter || (monthTargetDate && monthTargetDate.slice(0,7) === monthFilter);
     return (!search || hay.indexOf(search) !== -1) && matchesMonth && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
   });
   const s = sort.parking;
