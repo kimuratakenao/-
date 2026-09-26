@@ -2019,7 +2019,7 @@ function renderComplaints(){
   document.getElementById('count-complaints').textContent = list.length + '件';
   const table = document.getElementById('table-complaints');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:8%">受付日</th><th style="width:5%">受付方法</th><th style="width:16%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:6%">入居者名</th><th style="width:9%">連絡先</th><th style="width:12%">内容</th><th style="width:12%">対応内容①</th><th style="width:12%">対応内容②</th><th style="width:5%">対応状況</th><th style="width:6%">④設備工事</th><th style="width:4%">対応者</th></tr>';
+  thead.innerHTML = '<tr><th style="width:8%">受付日</th><th style="width:5%">受付方法</th><th style="width:12%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:6%">入居者名</th><th style="width:9%">連絡先</th><th style="width:13%">内容</th><th style="width:13%">対応内容①</th><th style="width:14%">対応内容②</th><th style="width:5%">対応状況</th><th style="width:6%">④設備工事</th><th style="width:4%">対応者</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">登録がありません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(r){
     return '<tr class="clickable-row" data-id="' + r.id + '">' +
