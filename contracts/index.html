@@ -1056,7 +1056,7 @@ function updateTenancyDaysDisplay(){
   if (!startEl.value || !endEl.value){ out.textContent = '—'; return; }
   const start = new Date(startEl.value + 'T00:00:00');
   const end = new Date(endEl.value + 'T00:00:00');
-  const days = Math.round((end - start) / 86400000);
+  const days = Math.round((end - start) / 86400000) + 1;
   if (isNaN(days)){ out.textContent = '—'; return; }
   let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   if (end.getDate() < start.getDate()) months--;
@@ -1259,7 +1259,7 @@ function updateParkingTenancyDaysDisplay(){
   if (!startEl.value || !endEl.value){ out.textContent = '—'; return; }
   const start = new Date(startEl.value + 'T00:00:00');
   const end = new Date(endEl.value + 'T00:00:00');
-  const days = Math.round((end - start) / 86400000);
+  const days = Math.round((end - start) / 86400000) + 1;
   if (isNaN(days)){ out.textContent = '—'; return; }
   let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   if (end.getDate() < start.getDate()) months--;
