@@ -335,7 +335,7 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="">ステータス: すべて</option>
         <option value="申込・審査中">申込・審査中</option>
         <option value="契約手続中">契約手続中</option>
-        <option value="引渡済">引渡済</option>
+        <option value="クローズ">クローズ</option>
         <option value="解約手続中">解約手続中</option>
         <option value="解約済">解約済</option>
       </select>
@@ -454,6 +454,7 @@ const PARKING_COMMON_FIELDS = {
 const PARKING_ONLY_FIELDS = {
   notes:{ label:'備考', type:'textarea' },
   application_date:{ label:'申込日', type:'date' },
+  move_in_confirmed_date:{ label:'入居確定日', type:'date' },
   contract_execution_date:{ label:'契約締結日', type:'date' },
   contract_start_date:{ label:'契約開始日', type:'date', full:true },
   storage_consent_form_status:{ label:'保管場所使用承諾書', type:'select', options:['有','無'] },
@@ -469,8 +470,6 @@ const PARKING_NEW_FIELDS = {
   screening_result_notified:{ label:'審査結果連絡日', type:'date' },
   contract_doc_collected_date:{ label:'契約書回収日', type:'date' },
   deposit_confirmed_date:{ label:'契約金入金確認日', type:'date', full:true },
-  agency_fee:{ label:'業務委託料', type:'number' },
-  brokerage_fee:{ label:'仲介手数料', type:'number' },
   transaction_ledger_created:{ label:'取引台帳作成', type:'bool' },
   contract_checklist_notes:{ label:'備考', type:'textarea' },
 };
@@ -1135,13 +1134,15 @@ const ALL_PARKING_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_
 const PARKING_COL_CENTER = { record_type:true, room_no:true, status:true, assignee:true };
 const PARKING_COL_WIDTHS = { record_type:6, property_name:26, room_no:6, contract_name:20, contract_start_date:12, move_out_date:12, status:11, assignee:7 };
 
-// 駐車場：鍵の受け渡しがない代わりに契約開始日を「引渡済」の基準にする
 function parkingStatus(r){
   if (r.record_type === '解約'){
-    return r.settlement_payment_date ? '解約済' : '解約手続中';
+    const cancelFields = Object.assign({}, PARKING_COMMON_FIELDS, CANCEL_ONLY_FIELDS, PARKING_CANCEL_FIELDS);
+    if (!blankFieldLabels(r, cancelFields, ['notes']).length) return '解約済';
+    return '解約手続中';
   }
-  if (r.contract_start_date) return '引渡済';
-  if (r.owner_approval_date) return '契約手続中';
+  const fields = Object.assign({}, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, PARKING_NEW_FIELDS);
+  if (!blankFieldLabels(r, fields, ['notes','contract_checklist_notes']).length) return 'クローズ';
+  if (r.move_in_confirmed_date) return '契約手続中';
   return '申込・審査中';
 }
 
