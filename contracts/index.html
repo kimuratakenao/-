@@ -1058,8 +1058,9 @@ function updateTenancyDaysDisplay(){
   const end = new Date(endEl.value + 'T00:00:00');
   const days = Math.round((end - start) / 86400000) + 1;
   if (isNaN(days)){ out.textContent = '—'; return; }
-  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  if (end.getDate() < start.getDate()) months--;
+  const endPlusOne = new Date(end.getTime() + 86400000);
+  let months = (endPlusOne.getFullYear() - start.getFullYear()) * 12 + (endPlusOne.getMonth() - start.getMonth());
+  if (endPlusOne.getDate() < start.getDate()) months--;
   out.textContent = months + 'ヶ月（' + days + '日）';
 }
 
@@ -1261,8 +1262,9 @@ function updateParkingTenancyDaysDisplay(){
   const end = new Date(endEl.value + 'T00:00:00');
   const days = Math.round((end - start) / 86400000) + 1;
   if (isNaN(days)){ out.textContent = '—'; return; }
-  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  if (end.getDate() < start.getDate()) months--;
+  const endPlusOne = new Date(end.getTime() + 86400000);
+  let months = (endPlusOne.getFullYear() - start.getFullYear()) * 12 + (endPlusOne.getMonth() - start.getMonth());
+  if (endPlusOne.getDate() < start.getDate()) months--;
   out.textContent = months + 'ヶ月（' + days + '日）';
 }
 
