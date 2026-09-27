@@ -757,7 +757,8 @@ function contractStatus(r){
   if (r.record_type === '解約'){
     return r.settlement_payment_date ? '解約済' : '解約手続中';
   }
-  if (r.application_date && r.move_in_confirmed_date && r.key_arrangement_date) return 'クローズ';
+  const fields = Object.assign({}, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CONTRACT_NEW_FIELDS);
+  if (!blankFieldLabels(r, fields, ['notes','contract_checklist_notes']).length) return 'クローズ';
   if (r.key_arrangement_date) return 'AD支払手続';
   if (r.move_in_confirmed_date) return '契約手続中';
   return '申込・審査中';
@@ -1367,7 +1368,7 @@ function renderInspections(){
   document.getElementById('count-inspections').textContent = list.length + '件';
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:12%">申込時情報</th><th style="width:7%">入居予定日</th><th style="width:7%">入居確定日</th><th style="width:7%">点検予定日</th><th style="width:7%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:7%">点検完了日</th><th style="width:7%">通電停止</th><th style="width:8%">担当者</th></tr>';
+  thead.innerHTML = '<tr><th style="width:14%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:9%">申込時情報</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:6%">担当者</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
@@ -2122,7 +2123,7 @@ function computeGaps(){
 
     // 未入力項目チェック（区分に応じた項目のみ）
     const contractFields = Object.assign({}, CONTRACT_COMMON_FIELDS, tag === '解約' ? CANCEL_ONLY_FIELDS : CONTRACT_ONLY_FIELDS, tag === '解約' ? CONTRACT_CANCEL_FIELDS : CONTRACT_NEW_FIELDS);
-    const contractBlanks = blankFieldLabels(c, contractFields, ['notes']);
+    const contractBlanks = blankFieldLabels(c, contractFields, ['notes','contract_checklist_notes']);
     if (contractBlanks.length){
       items.push({ tag:tag, label:label, text: '未入力項目: ' + contractBlanks.join('、'), open: function(){ openContractModal(c); } });
     }
