@@ -454,7 +454,6 @@ const PARKING_COMMON_FIELDS = {
 const PARKING_ONLY_FIELDS = {
   notes:{ label:'備考', type:'textarea' },
   application_date:{ label:'申込日', type:'date' },
-  move_in_confirmed_date:{ label:'入居確定日', type:'date' },
   contract_execution_date:{ label:'契約締結日', type:'date' },
   contract_start_date:{ label:'契約開始日', type:'date', full:true },
   storage_consent_form_status:{ label:'保管場所使用承諾書', type:'select', options:['有','無'] },
@@ -1142,7 +1141,7 @@ function parkingStatus(r){
   }
   const fields = Object.assign({}, PARKING_COMMON_FIELDS, PARKING_ONLY_FIELDS, PARKING_NEW_FIELDS);
   if (!blankFieldLabels(r, fields, ['notes','contract_checklist_notes']).length) return 'クローズ';
-  if (r.move_in_confirmed_date) return '契約手続中';
+  if (r.contract_start_date) return '契約手続中';
   return '申込・審査中';
 }
 
