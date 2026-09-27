@@ -492,7 +492,6 @@ const PARKING_CANCEL_FIELDS = {
 
 // 登録区分が「契約」のときだけ入力する項目
 const CONTRACT_ONLY_FIELDS = {
-  notes:{ label:'備考（仲介業者・担当者）', type:'textarea' },
   application_date:{ label:'申込日', type:'date' },
   contract_date:{ label:'入居希望日', type:'date' },
   move_in_confirmed_date:{ label:'入居確定日', type:'date' },
@@ -563,6 +562,7 @@ const INSPECTION_FIELDS = {
   cylinder_stock:{ label:'シリンダー在庫', type:'select', options:['○','×'] },
   power_off_display:{ label:'⑦通電停止日（前入居者）', type:'computed' },
   power_stop_done:{ label:'電気停止手続', type:'bool' },
+  application_notes_display:{ label:'申込時情報', type:'computed' },
   notes:{ label:'備考', type:'textarea' },
 };
 
@@ -1367,14 +1367,15 @@ function renderInspections(){
   document.getElementById('count-inspections').textContent = list.length + '件';
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:8%">担当者</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:19%">対象物件</th><th style="width:7%">部屋番号</th><th style="width:12%">申込時情報</th><th style="width:7%">入居予定日</th><th style="width:7%">入居確定日</th><th style="width:7%">点検予定日</th><th style="width:7%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:7%">点検完了日</th><th style="width:7%">通電停止</th><th style="width:8%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
     const powerStop = priorTenantPowerStopInfo(row.contract);
     return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
+      '<td class="wrap-cell">' + esc(row.contract.contract_checklist_notes) + '</td>' +
       '<td>' + esc(row.contract.contract_date) + '</td>' +
       '<td>' + esc(row.contract.move_in_confirmed_date) + '</td>' +
       '<td>' + esc(r ? r.inspection_scheduled_date : '') + '</td>' +
@@ -1567,6 +1568,7 @@ function updateContractLinkedDisplays(){
     move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
     room_no_display: c ? c.room_no : null,
     power_off_display: priorTenantPowerStopInfo(c).date,
+    application_notes_display: c ? c.contract_checklist_notes : null,
   };
   Object.keys(map).forEach(function(key){
     const out = document.querySelector('#modal [data-computed="' + key + '"]');
