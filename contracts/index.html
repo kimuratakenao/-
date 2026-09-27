@@ -106,7 +106,9 @@ tbody tr.clickable-row{cursor:pointer;}
 .status-申込中,.status-未着手,.status-未登録{background:var(--surface-2); color:var(--ink-soft);}
 .status-契約中,.status-工事中,.status-進行中,.status-契約締結{background:var(--orange-soft); color:var(--orange-ink);}
 .status-登録済,.status-契約完了{background:var(--ok-soft); color:var(--ok);}
-.status-申込・審査中,.status-契約手続中,.status-引渡済{background:var(--navy-soft); color:var(--navy-ink);}
+.status-申込・審査中,.status-契約手続中{background:var(--navy-soft); color:var(--navy-ink);}
+.status-AD支払手続{background:var(--orange-soft); color:var(--orange-ink);}
+.status-クローズ{background:var(--ok-soft); color:var(--ok);}
 .status-解約手続中,.status-解約済{background:var(--danger-soft); color:var(--danger);}
 .status-未対象{background:var(--surface-2); color:var(--ink-soft);}
 .status-契約{background:var(--navy-soft); color:var(--navy-ink);}
@@ -233,7 +235,8 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="">ステータス: すべて</option>
         <option value="申込・審査中">申込・審査中</option>
         <option value="契約手続中">契約手続中</option>
-        <option value="引渡済">引渡済</option>
+        <option value="AD支払手続">AD支払手続</option>
+        <option value="クローズ">クローズ</option>
         <option value="解約手続中">解約手続中</option>
         <option value="解約済">解約済</option>
       </select>
@@ -754,8 +757,9 @@ function contractStatus(r){
   if (r.record_type === '解約'){
     return r.settlement_payment_date ? '解約済' : '解約手続中';
   }
-  if (r.key_arrangement_date) return '引渡済';
-  if (r.owner_approval_date) return '契約手続中';
+  if (r.application_date && r.move_in_confirmed_date && r.key_arrangement_date) return 'クローズ';
+  if (r.key_arrangement_date) return 'AD支払手続';
+  if (r.move_in_confirmed_date) return '契約手続中';
   return '申込・審査中';
 }
 function contractLabel(r){
