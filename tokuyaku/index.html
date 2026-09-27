@@ -314,14 +314,14 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
   </header>
 
   <nav class="tabs" role="tablist">
-    <button class="tab-btn active" data-tab="search">特約事項作成</button>
-    <button class="tab-btn" data-tab="buildings">管理物件</button>
+    <button class="tab-btn active" data-tab="buildings">管理物件</button>
+    <button class="tab-btn" data-tab="search">特約事項作成</button>
     <button class="tab-btn" data-tab="list">一覧・編集</button>
     <button class="tab-btn" data-tab="import">テキスト取り込み</button>
   </nav>
 
   <!-- 特約事項作成 -->
-  <section class="panel" id="panel-search">
+  <section class="panel" id="panel-search" hidden>
     <div class="search-layout">
       <aside class="cond">
         <h2>契約の条件</h2>
@@ -364,7 +364,7 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
   </section>
 
   <!-- 管理物件 -->
-  <section class="panel" id="panel-buildings" hidden>
+  <section class="panel" id="panel-buildings">
     <div id="b-list-view">
       <div class="toolbar">
         <input type="text" id="b-keyword" placeholder="物件名で絞り込み">
