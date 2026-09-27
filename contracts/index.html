@@ -753,7 +753,9 @@ function daysSince(dateStr){
 }
 function contractStatus(r){
   if (r.record_type === '解約'){
-    return r.settlement_payment_date ? '解約済' : '解約手続中';
+    const cancelFields = Object.assign({}, CONTRACT_COMMON_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_CANCEL_FIELDS);
+    if (!blankFieldLabels(r, cancelFields, ['notes']).length) return '解約済';
+    return '解約手続中';
   }
   const fields = Object.assign({}, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CONTRACT_NEW_FIELDS);
   if (!blankFieldLabels(r, fields, ['notes','contract_checklist_notes']).length) return 'クローズ';
