@@ -1,0 +1,1891 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>特約事項アプリ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/tokuyaku/parser.js"></script>
+<style>
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#e8edf5; --border:#d7dfeb;
+  --ink:#152238; --ink-soft:#5c6b82;
+  --navy:#1f3a5f; --navy-ink:#132540; --navy-soft:#e2eaf5;
+  --orange:#e07b39; --orange-ink:#a85321; --orange-soft:#fbe8d8;
+  --danger:#b23b2e; --danger-soft:#f5e0dd;
+  --ok:#2e7d4f; --ok-soft:#dff0e4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1520; --surface:#161d2b; --surface-2:#1c2536; --border:#2b3650;
+    --ink:#e9edf5; --ink-soft:#96a3ba;
+    --navy:#7ea3d6; --navy-ink:#dce8fb; --navy-soft:#22314d;
+    --orange:#f2965a; --orange-ink:#ffd9b0; --orange-soft:#3a2a1c;
+    --danger:#e2776a; --danger-soft:#3a2621;
+    --ok:#6fcf97; --ok-soft:#1c3226;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1520; --surface:#161d2b; --surface-2:#1c2536; --border:#2b3650;
+  --ink:#e9edf5; --ink-soft:#96a3ba;
+  --navy:#7ea3d6; --navy-ink:#dce8fb; --navy-soft:#22314d;
+  --orange:#f2965a; --orange-ink:#ffd9b0; --orange-soft:#3a2a1c;
+  --danger:#e2776a; --danger-soft:#3a2621;
+  --ok:#6fcf97; --ok-soft:#1c3226;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  margin:0; padding:0 20px 96px;
+}
+h1,h2,h3,.brand{font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;}
+.wrap{max-width:1240px; margin:0 auto;}
+header.top{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:28px 0 18px; border-bottom:2px solid var(--navy); flex-wrap:wrap;
+}
+header.top .brand{font-size:22px; font-weight:700; letter-spacing:.01em; color:var(--navy-ink);}
+header.top .brand::before{content:"";display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--orange); margin-right:9px;}
+header.top .tagline{font-size:12.5px; color:var(--ink-soft);}
+header.top a{color:var(--navy-ink); font-size:12.5px;}
+
+.tabs{display:flex; gap:8px; margin-top:22px; flex-wrap:wrap;}
+.tab-btn{
+  padding:10px 18px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:var(--surface-2); color:var(--ink-soft); font-weight:700; font-size:13.5px; cursor:pointer; font-family:inherit;
+}
+.tab-btn.active{background:var(--surface); color:var(--navy-ink); border-color:var(--navy); box-shadow:0 -2px 0 var(--navy) inset;}
+.panel{
+  background:var(--surface); border:1px solid var(--border); border-radius:0 10px 10px 10px;
+  padding:20px; margin-top:-1px;
+}
+.panel[hidden]{display:none;}
+
+input[type=text], input[type=date], input[type=number], select, textarea{
+  padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:var(--surface);
+  color:var(--ink); font-size:13px; font-family:inherit; max-width:100%;
+}
+textarea{width:100%; line-height:1.6;}
+label.field{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 4px;}
+.field-row{margin-bottom:12px;}
+.field-row input[type=text], .field-row select, .field-row input[type=date]{width:100%;}
+.hint{font-size:11.5px; color:var(--ink-soft); margin-top:3px; line-height:1.5;}
+
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+.toolbar .spacer{flex:1;}
+.btn{
+  padding:9px 16px; border-radius:7px; border:1px solid var(--navy); background:var(--navy); color:#fff;
+  font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;
+}
+.btn.secondary{background:var(--surface); color:var(--navy-ink); border-color:var(--navy-soft);}
+.btn.danger{background:var(--surface); color:var(--danger); border-color:var(--danger);}
+.btn.orange{background:var(--orange); border-color:var(--orange);}
+.btn.small{padding:5px 11px; font-size:12px;}
+.btn:disabled{opacity:.5; cursor:default;}
+.linkbtn{background:none; border:none; cursor:pointer; color:var(--navy-ink); font-size:12px; text-decoration:underline; padding:0; font-family:inherit;}
+
+.note-box{
+  background:var(--navy-soft); border:1px solid var(--navy); border-radius:8px;
+  padding:10px 14px; margin-bottom:16px; font-size:12.5px; color:var(--navy-ink); line-height:1.6;
+}
+.warn-box{
+  background:var(--orange-soft); border:1px solid var(--orange); border-radius:8px;
+  padding:10px 14px; margin-bottom:12px; font-size:12.5px; color:var(--orange-ink); line-height:1.6;
+}
+
+/* 検索画面 */
+.search-layout{display:grid; grid-template-columns:300px minmax(0, 1fr); gap:20px; align-items:start;}
+.search-layout > *{min-width:0;}
+.cond{position:sticky; top:12px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:16px;}
+.cond h2{font-size:14px; margin:0 0 12px; color:var(--navy-ink);}
+.checks{display:flex; flex-wrap:wrap; gap:6px 12px; font-size:13px;}
+.checks label{display:flex; align-items:center; gap:5px; cursor:pointer;}
+.cand{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+.cand button{border:1px solid var(--navy-soft); background:var(--surface); color:var(--navy-ink); border-radius:999px; padding:3px 10px; font-size:12px; cursor:pointer; font-family:inherit;}
+.cand button.sel{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+.group{border:1px solid var(--border); border-radius:10px; margin-bottom:16px; overflow:hidden;}
+.group > .g-head{display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--navy-soft); color:var(--navy-ink); flex-wrap:wrap;}
+.group > .g-head h3{margin:0; font-size:15px;}
+.group > .g-head .g-sub{font-size:12px; color:var(--ink-soft);}
+.group > .g-head .spacer{flex:1;}
+.group.muted > .g-head{background:var(--surface-2);}
+.g-note{padding:8px 14px; font-size:12px; color:var(--orange-ink); background:var(--orange-soft); border-bottom:1px solid var(--border);}
+.h-block{border-top:1px solid var(--border);}
+.h-block:first-of-type{border-top:none;}
+.h-title{display:flex; align-items:center; gap:8px; padding:8px 14px; font-weight:700; font-size:13px; background:var(--surface); flex-wrap:wrap;}
+.h-title label{display:flex; align-items:center; gap:6px; cursor:pointer;}
+.h-memo{padding:0 14px 6px 40px; font-size:11.5px; color:var(--ink-soft); white-space:pre-wrap;}
+.clause{display:grid; grid-template-columns:22px 1fr; gap:8px; padding:7px 14px 7px 18px; font-size:13px; line-height:1.65; border-top:1px dashed var(--border);}
+.clause:hover{background:var(--surface-2);}
+.clause .body{white-space:pre-wrap; word-break:break-word; cursor:pointer;}
+.clause .body.clamp{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.clause .meta{margin-top:3px; display:flex; flex-wrap:wrap; gap:5px;}
+.clause input[type=checkbox]{margin-top:5px;}
+mark.ph{background:var(--orange-soft); color:var(--orange-ink); font-weight:700; padding:0 2px; border-radius:3px;}
+.chip{display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; background:var(--surface-2); color:var(--ink-soft);}
+.chip.memo{white-space:normal; text-align:left; border-radius:8px;}
+.chip.edit{background:var(--orange-soft); color:var(--orange-ink);}
+.chip.cat{background:var(--navy-soft); color:var(--navy-ink);}
+.chip.swap{background:var(--ok-soft); color:var(--ok);}
+.chip.old{background:var(--danger-soft); color:var(--danger);}
+.empty{padding:30px; text-align:center; color:var(--ink-soft); font-size:13px;}
+
+.selbar{
+  position:fixed; left:0; right:0; bottom:0; background:var(--navy); color:#fff; padding:10px 20px;
+  display:flex; gap:12px; align-items:center; justify-content:center; z-index:20; flex-wrap:wrap;
+  box-shadow:0 -4px 14px rgba(0,0,0,.18);
+}
+.selbar[hidden]{display:none;}
+.selbar .btn{background:var(--orange); border-color:var(--orange);}
+.selbar .btn.secondary{background:transparent; color:#fff; border-color:#fff;}
+
+/* 一覧 */
+table.list{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.list th{background:var(--navy-soft); color:var(--navy-ink); text-align:left; padding:7px 10px; border:1px solid var(--border); white-space:nowrap;}
+table.list td{padding:7px 10px; border:1px solid var(--border); vertical-align:top;}
+table.list tr:hover td{background:var(--surface-2);}
+table.list td.nowrap{white-space:nowrap;}
+.list-group-title{margin:18px 0 8px; font-size:15px; color:var(--navy-ink); display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.list-head-title{font-weight:700; font-size:13px; margin:12px 0 6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+.scroll-x{overflow-x:auto;}
+tr.archived td{opacity:.55;}
+table.list td .pos{display:inline-block; min-width:18px; font-weight:700; color:var(--navy-ink);}
+.handle{display:inline-flex; align-items:center; justify-content:center; width:26px; height:28px; margin-right:6px; border-radius:5px; color:var(--ink-soft); font-size:16px; cursor:grab; touch-action:none; user-select:none; vertical-align:middle;}
+.handle:hover{background:var(--navy-soft); color:var(--navy-ink);}
+.handle.off{opacity:.25; cursor:default;}
+.handle.off:hover{background:none;}
+tr.dragging{position:relative; z-index:5; box-shadow:0 8px 22px rgba(10,20,35,.25);}
+tr.dragging td{background:var(--orange-soft) !important; box-shadow:inset 0 0 0 1px var(--orange);}
+.pos-to{margin-left:4px; color:var(--orange-ink); font-weight:700;}
+tr.ended td{color:var(--ink-soft);}
+.danger-zone{margin-top:10px; font-size:12.5px;}
+.danger-zone summary{cursor:pointer; color:var(--danger);}
+/* 管理物件の基本情報（コンパクト表示） */
+.b-sec.b-info{padding:10px 14px;}
+.b-sec.b-info > h3{margin-bottom:6px; font-size:14px;}
+.info-grid{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)) minmax(0, 1.6fr); gap:8px;}
+.info-grid label.field{font-size:11px; margin-bottom:2px;}
+.info-grid select, .info-grid input{width:100%; padding:6px 8px; font-size:12.5px;}
+.b-info .hint{margin-top:6px;}
+@media (max-width: 900px){ .info-grid{grid-template-columns:repeat(3, minmax(0, 1fr));} .info-memo{grid-column:1 / -1;} }
+@media (max-width: 600px){ .info-grid{grid-template-columns:repeat(2, minmax(0, 1fr));} }
+/* ダイアログは画面の高さに収め、中身だけスクロールさせる */
+dialog[open]{display:flex; flex-direction:column; max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px);}
+dialog .d-body{flex:1 1 auto; min-height:0;}
+dialog .d-head, dialog .d-foot{flex:0 0 auto;}
+/* 見出しから選んで追加 */
+dialog#dlg-pick{width:min(900px, calc(100vw - 32px));}
+.pk-group{border:1px solid var(--border); border-radius:8px; margin-bottom:6px; overflow:hidden;}
+.pk-head{display:flex; gap:8px; align-items:center; padding:8px 10px; background:var(--surface-2); cursor:pointer; flex-wrap:wrap; font-size:13px;}
+.pk-head b{font-weight:700;}
+.pk-head .spacer{flex:1;}
+.pk-head input{margin:0;}
+.pk-body{padding:4px 10px 8px;}
+.pk-body[hidden]{display:none;}
+.pk-clause{display:grid; grid-template-columns:22px 1fr; gap:6px; padding:6px 0; border-top:1px dashed var(--border); font-size:12.5px; line-height:1.6;}
+.pk-clause:first-child{border-top:none;}
+.pk-clause .b{white-space:pre-wrap; word-break:break-word;}
+.pk-clause.dup{opacity:.5;}
+.pk-foot{align-items:flex-end;}
+.pk-dest{flex:1; min-width:220px; margin-right:auto;}
+table.bld-clauses tr.cat-row td{background:var(--surface-2); color:var(--navy-ink); font-weight:700; font-size:12px; cursor:default;}
+.head-block{background:var(--surface); border-radius:8px; padding:2px 4px 6px; margin:0 -4px;}
+.head-block .hpos{display:inline-block; min-width:18px; font-weight:700; color:var(--orange-ink);}
+.head-block.dragging{position:relative; z-index:6; background:var(--orange-soft); box-shadow:0 10px 26px rgba(10,20,35,.28);}
+.head-block.dropped{background:var(--ok-soft); transition:background .6s;}
+tr.dropped td{background:var(--ok-soft) !important; transition:background .6s;}
+
+/* 並べ替え・最終確認 */
+.steps{display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:14px;}
+.step{color:var(--ink-soft); font-weight:500;}
+.step.on{color:var(--navy-ink); font-weight:700; border-bottom:2px solid var(--orange);}
+.step-sep{color:var(--ink-soft);}
+.ord-row{display:grid; grid-template-columns:auto auto 1fr auto; gap:8px; align-items:start; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; background:var(--surface);}
+.ord-row .pos{font-weight:700; color:var(--navy-ink); min-width:30px; padding-top:4px;}
+.ord-row .handle{margin-right:0;}
+.ord-row .o-body{font-size:13px; line-height:1.6; white-space:pre-wrap; word-break:break-word; cursor:pointer;}
+.ord-row .o-body.clamp{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.ord-row .o-meta{font-size:11px; color:var(--ink-soft); margin-bottom:2px;}
+.ord-row .o-del{background:none; border:none; color:var(--ink-soft); font-size:18px; cursor:pointer; padding:0 4px; line-height:1;}
+.ord-row .o-del:hover{color:var(--danger);}
+.ord-row.dragging{position:relative; z-index:5; background:var(--orange-soft); border-color:var(--orange); box-shadow:0 8px 22px rgba(10,20,35,.25);}
+.ord-row.dropped{background:var(--ok-soft); transition:background .6s;}
+body.is-dragging, body.is-dragging *{cursor:grabbing !important; user-select:none !important;}
+
+/* モーダル */
+dialog{border:1px solid var(--border); border-radius:12px; padding:0; width:min(760px, calc(100vw - 32px)); background:var(--surface); color:var(--ink);}
+dialog::backdrop{background:rgba(10,20,35,.45);}
+dialog .d-head{padding:14px 18px; border-bottom:1px solid var(--border); font-weight:700; font-size:15px; color:var(--navy-ink);}
+dialog .d-body{padding:16px 18px; max-height:70vh; overflow:auto;}
+dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 14px;}
+
+/* 取り込み */
+.imp-block{border:1px solid var(--border); border-radius:10px; margin-bottom:12px; padding:12px 14px;}
+.imp-block.off{opacity:.5;}
+.imp-block .imp-head{display:grid; grid-template-columns:auto 1.4fr 1fr; gap:8px; align-items:center;}
+.imp-block .imp-tags{display:grid; grid-template-columns:repeat(4, 1fr) 150px; gap:8px; margin-top:8px;}
+.imp-block .imp-tags input{width:100%;}
+.imp-clause{display:grid; grid-template-columns:auto 1fr auto; gap:8px; margin-top:8px; align-items:start;}
+.imp-clause textarea{min-height:48px; font-size:12.5px;}
+.imp-clause.dup textarea{background:var(--surface-2);}
+.imp-src{font-size:11px; color:var(--ink-soft);}
+
+#toast{position:fixed; top:16px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.2);}
+#toast.err{background:var(--danger);}
+#toast[hidden]{display:none;}
+
+@media (max-width: 900px){
+  .search-layout{grid-template-columns:minmax(0, 1fr);}
+  .cond{position:static;}
+  .imp-block .imp-head, .imp-block .imp-tags{grid-template-columns:1fr;}
+}
+@media (max-width: 600px){
+  body{padding:0 16px 110px;}
+  .panel{padding:14px;}
+  .grid2{grid-template-columns:1fr;}
+  .tab-btn{padding:8px 12px; font-size:12.5px;}
+  #list-body table.list{min-width:640px;}
+  table.bld-list{min-width:720px;}
+}
+
+/* 検索条件の追加分 */
+.cond .sub-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 4px;}
+.cond .sub-head label.field{margin:0;}
+.checks.col{flex-direction:column; gap:4px;}
+.checks.col label{align-items:flex-start; line-height:1.45;}
+.checks.col input{margin-top:3px;}
+.radio-row{display:flex; gap:14px; font-size:13px;}
+.radio-row label{display:flex; align-items:center; gap:5px; cursor:pointer;}
+.bld-card{border:1px solid var(--navy); background:var(--navy-soft); border-radius:10px; padding:10px 14px; margin-bottom:16px; font-size:13px; color:var(--navy-ink);}
+.bld-card h3{margin:0 0 6px; font-size:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.bld-card .facts{display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12.5px;}
+.bld-card .facts b{color:var(--ink-soft); font-weight:500; margin-right:4px;}
+.bld-card .last{margin-top:8px; padding-top:8px; border-top:1px dashed var(--navy); display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.save-box{margin-top:14px; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2);}
+.save-box .row{display:grid; grid-template-columns:2fr 1fr 2fr auto; gap:8px; align-items:end;}
+
+/* 建物ページ */
+.b-name{color:var(--navy-ink); font-weight:700; text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; font-size:13px; font-family:inherit; text-align:left;}
+.b-detail h2{margin:0; font-size:20px; color:var(--navy-ink);}
+.b-sec{border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:16px;}
+.b-sec > h3{margin:0 0 10px; font-size:15px; color:var(--navy-ink); display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.b-sec > h3 .spacer{flex:1;}
+.grid3{display:grid; grid-template-columns:repeat(3, 1fr); gap:0 14px;}
+.doc{border:1px solid var(--border); border-radius:8px; margin-bottom:10px; overflow:hidden;}
+.doc-head{display:flex; gap:10px; align-items:center; padding:8px 12px; background:var(--surface-2); flex-wrap:wrap; font-size:13px; cursor:pointer;}
+.doc-head .spacer{flex:1;}
+.doc-body{padding:10px 12px;}
+.doc-body[hidden]{display:none;}
+.doc-body .row3{display:grid; grid-template-columns:1fr 1fr 2fr; gap:8px; margin-bottom:8px;}
+.doc-body .row3 input{width:100%;}
+.doc-body textarea{resize:vertical; overflow:hidden;}
+.room{border:1px solid var(--navy-soft); border-radius:10px; margin-bottom:10px; overflow:hidden;}
+.room-head{display:flex; gap:12px; align-items:center; padding:10px 14px; background:var(--navy-soft); color:var(--navy-ink); cursor:pointer; flex-wrap:wrap; font-size:13px;}
+.room-head .room-name{font-size:15px;}
+.room-head .spacer{flex:1;}
+.room-body{padding:10px 12px;}
+.room-body[hidden]{display:none;}
+.room-hist-title{font-size:12px; font-weight:700; color:var(--ink-soft); margin:14px 0 6px;}
+.doc.old{opacity:.92;}
+.doc-head:not([data-doc-toggle]){cursor:default;}
+.doc-status{font-size:11.5px; color:var(--ok);}
+.doc-status.err{color:var(--danger); font-weight:700;}
+.chip.latest{background:var(--orange); color:#fff;}
+@media (max-width: 900px){
+  .grid3{grid-template-columns:1fr 1fr;}
+  .save-box .row{grid-template-columns:1fr 1fr;}
+}
+@media (max-width: 600px){
+  .grid3, .save-box .row, .doc-body .row3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">特約事項アプリ</div>
+      <div class="tagline">条件を入れると、使う特約の候補がカテゴリ別に出ます。チェックしてまとめてコピー・保存できます。</div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="search">特約事項作成</button>
+    <button class="tab-btn" data-tab="buildings">管理物件</button>
+    <button class="tab-btn" data-tab="list">一覧・編集</button>
+    <button class="tab-btn" data-tab="import">テキスト取り込み</button>
+  </nav>
+
+  <!-- 特約事項作成 -->
+  <section class="panel" id="panel-search">
+    <div class="search-layout">
+      <aside class="cond">
+        <h2>契約の条件</h2>
+        <div class="field-row">
+          <label class="field" for="q-building">建物名</label>
+          <input type="text" id="q-building" placeholder="例：ガレット津田沼（一部でも可）" autocomplete="off">
+          <div class="cand" id="q-building-cand"></div>
+        </div>
+        <div class="field-row">
+          <label class="field">和室</label>
+          <div class="radio-row">
+            <label><input type="radio" name="q-washitsu" value="和室なし" checked> なし</label>
+            <label><input type="radio" name="q-washitsu" value="和室あり"> あり</label>
+          </div>
+          <div class="hint">基本特約の「退室後の費用負担」の文面が切り替わります。建物の基本情報に登録してあれば自動で入ります。</div>
+        </div>
+        <div class="field-row">
+          <div class="sub-head"><label class="field">属性</label><button class="linkbtn" data-add-cat="属性別特約">＋追加</button></div>
+          <div class="checks col" id="q-attrs"></div>
+        </div>
+        <div class="field-row">
+          <div class="sub-head"><label class="field">その他</label><button class="linkbtn" data-add-cat="その他の特約">＋追加</button></div>
+          <div class="checks col" id="q-others"></div>
+        </div>
+        <div class="field-row">
+          <label class="field">駐車場</label>
+          <div class="checks col">
+            <label><input type="checkbox" id="q-parking"> 駐車場も契約する</label>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field" for="q-keyword">キーワード（本文から探す）</label>
+          <input type="text" id="q-keyword" placeholder="例：専用庭、ペット、残置物">
+          <div class="hint">全角/半角・ひらがな/カタカナ・スペース・記号の違いは無視して探します。</div>
+        </div>
+        <button class="btn secondary small" id="q-reset">条件をクリア</button>
+      </aside>
+      <div id="results"></div>
+    </div>
+  </section>
+
+  <!-- 管理物件 -->
+  <section class="panel" id="panel-buildings" hidden>
+    <div id="b-list-view">
+      <div class="toolbar">
+        <input type="text" id="b-keyword" placeholder="物件名で絞り込み">
+        <select id="b-status">
+          <option value="active">管理中</option>
+          <option value="ended">管理終了</option>
+          <option value="all">すべて</option>
+        </select>
+        <span class="spacer"></span>
+        <button class="btn" id="b-new">＋ 管理物件を追加</button>
+      </div>
+      <div class="scroll-x" id="buildings-body"></div>
+    </div>
+    <div id="b-detail-view" class="b-detail" hidden></div>
+  </section>
+
+  <!-- 一覧・編集 -->
+  <section class="panel" id="panel-list" hidden>
+    <div class="toolbar">
+      <select id="l-category"></select>
+      <input type="text" id="l-keyword" placeholder="キーワード・建物名で絞り込み">
+      <span class="checks"><label><input type="checkbox" id="l-old"> 旧版も表示</label><label><input type="checkbox" id="l-archived"> 削除済みも表示</label></span>
+      <span class="spacer"></span>
+      <button class="btn" id="l-new">＋ 特約を新規登録</button>
+    </div>
+    <div id="list-body"></div>
+  </section>
+
+  <!-- テキスト取り込み -->
+  <section class="panel" id="panel-import" hidden>
+    <div class="note-box">
+      「■見出し」「★建物名」の形式で書かれた特約事項のテキストを読み込み、カテゴリ・建物名・タグを自動で振り分けます。<br>
+      自動判定は下書きです。内容を確認・修正してから「登録する」を押してください。すでに同じ本文が登録されているものは「登録済み」として最初からチェックを外しています。
+    </div>
+    <div class="toolbar">
+      <input type="file" id="i-file" accept=".txt,text/plain">
+      <span class="hint">またはテキストを貼り付け ↓</span>
+    </div>
+    <textarea id="i-text" rows="8" placeholder="■特約基本事項&#10;1.借主は更新契約時に…"></textarea>
+    <div class="toolbar" style="margin-top:10px;">
+      <button class="btn" id="i-parse">解析する</button>
+      <span class="spacer"></span>
+      <button class="btn orange" id="i-save" hidden>チェックしたものを登録する</button>
+    </div>
+    <div id="import-body"></div>
+  </section>
+</div>
+
+<div class="selbar" id="selbar" hidden>
+  <span id="selbar-count"></span>
+  <button class="btn secondary small" id="selbar-clear">選択を解除</button>
+  <button class="btn" id="selbar-copy">選択した特約を並べ替え・最終確認へ →</button>
+</div>
+
+<dialog id="dlg-copy">
+  <div class="d-head">
+    <div class="steps"><span class="step" data-step-label="1">① 並べ替え</span><span class="step-sep">›</span><span class="step" data-step-label="2">② 最終確認（契約書に貼り付ける文章）</span></div>
+  </div>
+  <div class="d-body" id="c-step1">
+    <div class="hint" style="margin-bottom:8px;">左の「⠿」をつかんで上下にドラッグすると、契約書に載せる順番を入れ替えられます。不要なものは「×」で外せます。</div>
+    <div id="c-order"></div>
+  </div>
+  <div class="d-body" id="c-step2" hidden>
+    <div class="toolbar">
+      <label class="field" style="margin:0">番号</label>
+      <select id="c-style">
+        <option value="full">１．（全角）</option>
+        <option value="half">1.（半角）</option>
+        <option value="mixed">1．</option>
+        <option value="none">番号なし</option>
+      </select>
+      <label class="field" style="margin:0" for="c-start">開始番号</label>
+      <input type="number" id="c-start" value="1" min="1" style="width:80px">
+    </div>
+    <div class="warn-box" id="c-warn" hidden></div>
+    <textarea id="c-text" rows="14"></textarea>
+    <div class="hint">このまま編集してからコピー・保存できます。</div>
+    <div class="save-box">
+      <label class="field">この建物の特約として保存する（あとで管理物件のページから見られます）</label>
+      <div class="row">
+        <div><label class="field" for="c-building">建物名</label><input type="text" id="c-building" list="dl-buildings" style="width:100%"></div>
+        <div><label class="field" for="c-room">号室（必須）</label><input type="text" id="c-room" placeholder="例：101" style="width:100%"></div>
+        <div><label class="field" for="c-title">メモ</label><input type="text" id="c-title" placeholder="例：法人契約・駐車場あり" style="width:100%"></div>
+        <button class="btn orange" id="c-save">保存</button>
+      </div>
+    </div>
+  </div>
+  <div class="d-foot">
+    <button class="btn secondary" data-close>閉じる</button>
+    <button class="btn secondary" id="c-back" hidden>← 並べ替えに戻る</button>
+    <button class="btn" id="c-next">次へ：最終確認 →</button>
+    <button class="btn" id="c-do" hidden>コピーする</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-pick">
+  <div class="d-head" id="pk-title">見出しから選んで追加</div>
+  <div class="d-body">
+    <div class="toolbar">
+      <select id="pk-cat"></select>
+      <input type="text" id="pk-keyword" placeholder="見出し・本文・建物名で絞り込み（例：専用庭、プロパン、駐輪）" style="flex:1; min-width:200px">
+    </div>
+    <div class="hint" style="margin-bottom:8px;">見出しをクリックすると条文が開きます。追加したい見出し・条文にチェックを入れてください（見出しのチェックで、その見出しの条文をまとめて選べます）。この建物にすでに同じ条文があるものは「登録済み」と表示されます。</div>
+    <div id="pk-list"></div>
+  </div>
+  <div class="d-foot pk-foot">
+    <div class="pk-dest">
+      <label class="field" for="pk-heading">追加先の見出し</label>
+      <input type="text" id="pk-heading" list="dl-bld-headings" style="width:100%">
+    </div>
+    <button class="btn secondary" data-close>キャンセル</button>
+    <button class="btn" id="pk-add">追加する</button>
+  </div>
+</dialog>
+<datalist id="dl-bld-headings"></datalist>
+
+<dialog id="dlg-heading">
+  <div class="d-head">見出しを変更</div>
+  <div class="d-body">
+    <div class="note-box" id="h-info"></div>
+    <div class="field-row"><label class="field" for="h-name">新しい見出し</label><input type="text" id="h-name" style="width:100%"></div>
+    <div class="hint">同じカテゴリで同じ見出しの条文すべてと、保存済みの特約事項の条件（属性・その他のチェック）が新しい見出しに変わります。すでにある見出しを入力すると、その見出しにまとめられます。</div>
+  </div>
+  <div class="d-foot">
+    <button class="btn secondary" data-close>キャンセル</button>
+    <button class="btn" id="h-save">変更する</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-clause">
+  <div class="d-head" id="e-title">特約の編集</div>
+  <div class="d-body">
+    <div class="grid2">
+      <div class="field-row"><label class="field" for="e-category">カテゴリ</label><select id="e-category"></select></div>
+      <div class="field-row"><label class="field" for="e-heading">見出し</label><input type="text" id="e-heading" list="dl-headings"><div class="hint">属性・その他は、この見出しが検索画面のチェック項目の名前になります。</div></div>
+    </div>
+    <div class="field-row">
+      <label class="field" for="e-body">本文</label>
+      <textarea id="e-body" rows="6"></textarea>
+      <div class="hint">先頭の番号（1．など）は付けずに入力してください。コピー時に自動で振ります。未確定の部分は「●●」と書くと「要編集」マークが付きます。</div>
+    </div>
+    <div class="grid2">
+      <div class="field-row"><label class="field" for="e-buildings">対象建物</label><input type="text" id="e-buildings" list="dl-buildings" placeholder="複数の場合は「、」区切り"></div>
+      <div class="field-row"><label class="field" for="e-subtags">サブタグ</label><input type="text" id="e-subtags" placeholder="例：町会費、プロパンガス、ペット"></div>
+      <div class="field-row"><label class="field" for="e-variant">使う条件（基本特約の切り替え）</label>
+        <select id="e-variant"><option value="">いつも使う</option><option>和室あり</option><option>和室なし</option></select></div>
+      <div class="field-row"><label class="field" for="e-sort">並び順</label><input type="number" id="e-sort"><div class="hint">小さいほど上に表示</div></div>
+      <div class="field-row"><label class="field" for="e-from">適用開始日</label><input type="date" id="e-from"><div class="hint">空欄＝最初から有効</div></div>
+      <div class="field-row"><label class="field" for="e-to">適用終了日</label><input type="date" id="e-to"><div class="hint">空欄＝現在も有効。旧版になったら日付を入れる</div></div>
+      <div class="field-row"><label class="field" for="e-version">版の名前</label><input type="text" id="e-version" placeholder="例：2025.5〜版"></div>
+    </div>
+    <div class="field-row"><label class="field" for="e-memo">メモ（契約書には出ません）</label><textarea id="e-memo" rows="2"></textarea></div>
+  </div>
+  <div class="d-foot">
+    <button class="btn danger" id="e-archive" style="margin-right:auto">削除</button>
+    <button class="btn secondary" data-close>キャンセル</button>
+    <button class="btn" id="e-save">保存</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-version">
+  <div class="d-head">基本特約の版を改定する</div>
+  <div class="d-body">
+    <div class="note-box" id="v-info"></div>
+    <div class="grid2">
+      <div class="field-row"><label class="field" for="v-label">新しい版の名前</label><input type="text" id="v-label" placeholder="例：2026.10〜版"></div>
+      <div class="field-row"><label class="field" for="v-from">適用開始日</label><input type="date" id="v-from"></div>
+    </div>
+    <div class="hint">今の版の条文をすべて複製して新しい版を作ります（和室あり/なしの文面も含みます）。今の版には「適用開始日の前日」が適用終了日として入り、履歴として残ります。作成後、新しい版の条文を編集してください。</div>
+  </div>
+  <div class="d-foot">
+    <button class="btn secondary" data-close>キャンセル</button>
+    <button class="btn" id="v-do">新しい版を作成</button>
+  </div>
+</dialog>
+
+<datalist id="dl-buildings"></datalist>
+<datalist id="dl-headings"></datalist>
+<div id="toast" hidden></div>
+
+<script>
+'use strict';
+// ---- Supabase setup ----
+// 契約進捗アプリと同じプロジェクト。サイト全体は Basic 認証（middleware.ts）で保護している。
+const SUPABASE_URL = 'https://dyyuxaglncsokiurrvzx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_keakR_o8fRedv-cwSSI-GQ__msV3jag';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const P = window.TokuyakuParser;
+
+const CATEGORIES = P.CATEGORIES;
+const CAT_DESC = {
+  '基本特約': '全物件共通のベース',
+  '物件別追加特約': '建物ごとの追加特約',
+  '属性別特約': '選んだ属性の特約',
+  'その他の特約': '選んだ項目の特約',
+  '駐車場特約': '該当するパターンを選んでください',
+  '保証会社別特約': '（現在は基本特約のオリコを使用）'
+};
+
+let clauses = [], bmeta = [], docs = [];
+const $ = (id) => document.getElementById(id);
+const norm = P.normalizeKey;
+
+// ---- 共通 ----
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function markPh(s){ return esc(s).replace(/●+/g, m => '<mark class="ph">' + m + '</mark>'); }
+function ymd(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function todayStr(){ return ymd(new Date()); }
+function dayBefore(s){ const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate()-1); return ymd(d); }
+function fmtDateTime(s){ const d = new Date(s); return ymd(d).replace(/-/g, '/') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function splitList(s){ return String(s || '').split(/[、,，\n]/).map(x => x.trim()).filter(Boolean); }
+function uniq(a){ return Array.from(new Set(a)); }
+function bySort(a, b){ return (a.sort_order - b.sort_order) || (a.id - b.id); }
+function isValidOn(c, d){ return (!c.effective_from || c.effective_from <= d) && (!c.effective_to || c.effective_to >= d); }
+function nowIso(){ return new Date().toISOString(); }
+function toast(msg, isErr){
+  const t = $('toast'); t.textContent = msg; t.className = isErr ? 'err' : ''; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, isErr ? 6000 : 2600);
+}
+function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+async function copyText(text){
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+}
+document.querySelectorAll('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+
+async function loadAll(){
+  const [c, b, d] = await Promise.all([
+    sb.from('tokuyaku_clauses').select('*').order('sort_order').order('id'),
+    sb.from('tokuyaku_buildings').select('*').order('name'),
+    sb.from('tokuyaku_documents').select('*').order('created_at', { ascending: false })
+  ]);
+  const err = c.error || b.error || d.error;
+  if (err){ toast('データの読み込みに失敗しました：' + err.message, true); return; }
+  clauses = c.data; bmeta = b.data; docs = d.data;
+  refreshMasters();
+  renderAll();
+}
+
+// ---- 建物名の名寄せ ----
+// 正規化キーが同じ名前は同じ建物。tokuyaku_buildings の別名も同じ建物として扱う。
+function buildingIndex(){
+  const groups = [];
+  function groupFor(name){
+    const k = norm(name);
+    let g = groups.find(x => x.keys.has(k));
+    if (!g) { g = { name, keys: new Set([k]), names: new Set(), meta: null }; groups.push(g); }
+    return g;
+  }
+  bmeta.forEach(m => {
+    const g = groupFor(m.name); g.name = m.name; g.meta = m; g.names.add(m.name);
+    (m.aliases || []).forEach(a => g.keys.add(norm(a)));
+  });
+  // 削除済みの特約しか残っていない建物（管理終了で削除した建物）は一覧に出さない
+  clauses.filter(c => !c.archived).forEach(c => (c.buildings || []).forEach(n => groupFor(n).names.add(n)));
+  docs.forEach(d => d.building && groupFor(d.building).names.add(d.building));
+  groups.forEach(g => g.names.forEach(n => g.keys.add(norm(n))));
+  return groups.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+}
+let BIDX = [];
+function findBuilding(name){ const k = norm(name); return k ? (BIDX.find(g => g.keys.has(k)) || null) : null; }
+function matchesBuildingGroup(names, g){ return !!g && (names || []).some(n => g.keys.has(norm(n))); }
+// 特約事項作成の建物名の候補（管理終了した物件は出さない）
+function buildingCandidates(q){
+  const k = norm(q); if (!k) return [];
+  const active = BIDX.filter(g => !isEnded(g));
+  const exact = active.filter(g => g.keys.has(k));
+  if (exact.length) return exact;
+  return active.filter(g => Array.from(g.keys).some(x => x.includes(k) || (x.length >= 3 && k.includes(x))));
+}
+function docsOf(g){ return g ? docs.filter(d => g.keys.has(norm(d.building))) : []; }
+
+// 属性・その他のチェック項目 = そのカテゴリの見出し（登録順）
+function optionHeadings(cat){
+  const rows = clauses.filter(c => !c.archived && c.category === cat).sort(bySort);
+  return uniq(rows.map(c => c.heading || '(見出しなし)'));
+}
+function renderOptionChecks(id, cat){
+  const cur = new Set(Array.from(document.querySelectorAll('#' + id + ' input:checked')).map(i => i.value));
+  const heads = optionHeadings(cat);
+  $(id).innerHTML = heads.map(h => '<label><input type="checkbox" value="' + esc(h) + '"' + (cur.has(h) ? ' checked' : '') + '> ' + esc(h) + '</label>').join('')
+    || '<span class="hint">まだ登録がありません。「＋追加」から登録できます。</span>';
+}
+
+function refreshMasters(){
+  BIDX = buildingIndex();
+  $('dl-buildings').innerHTML = BIDX.map(g => '<option value="' + esc(g.name) + '">').join('');
+  $('dl-headings').innerHTML = uniq(clauses.map(c => c.heading)).map(h => '<option value="' + esc(h) + '">').join('');
+  renderOptionChecks('q-attrs', '属性別特約');
+  renderOptionChecks('q-others', 'その他の特約');
+  const curCat = $('l-category').value;
+  $('l-category').innerHTML = '<option value="">すべてのカテゴリ</option>' + CATEGORIES.map(c => '<option' + (c === curCat ? ' selected' : '') + '>' + c + '</option>').join('');
+  $('e-category').innerHTML = CATEGORIES.map(c => '<option>' + c + '</option>').join('');
+}
+
+function renderAll(){ renderSearch(); renderList(); renderBuildings(); }
+
+// ---- タブ ----
+function showTab(name){
+  document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== 'panel-' + name);
+  updateSelbar();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.tab === 'buildings') closeBuilding();
+  showTab(b.dataset.tab);
+}));
+
+// ================= 特約事項作成 =================
+const Q = { building: null };
+let RESULT = [];           // [{key,cat,title,sub,note,muted,items:[{key,c,def,badge}]}]
+let checked = new Map();   // item key -> bool
+let RESULT_HEAD = '';      // 結果の上に出す建物カード・案内
+
+function readQuery(){
+  return {
+    buildingText: $('q-building').value.trim(),
+    date: todayStr(), // 契約日では検索しない。基本特約は常に今日時点で有効な版を使う
+    washitsu: (document.querySelector('input[name=q-washitsu]:checked') || {}).value || '和室なし',
+    attrs: Array.from(document.querySelectorAll('#q-attrs input:checked')).map(i => i.value),
+    others: Array.from(document.querySelectorAll('#q-others input:checked')).map(i => i.value),
+    parking: $('q-parking').checked,
+    keyword: $('q-keyword').value.trim()
+  };
+}
+function setWashitsu(v){ document.querySelectorAll('input[name=q-washitsu]').forEach(r => r.checked = r.value === v); }
+
+function computeResults(q){
+  const live = clauses.filter(c => !c.archived && isValidOn(c, q.date) && (!c.variant || c.variant === q.washitsu));
+  const groups = [];
+  const shown = new Set();
+  const item = (gk, c, def, badge) => { shown.add(c.id); return { key: gk + ':' + c.id, c, def, badge }; };
+
+  // 基本特約（契約日で有効な版・和室あり/なしで文面を切り替え）
+  const basic = live.filter(c => c.category === '基本特約').sort(bySort);
+  const versions = uniq(basic.map(c => c.version_label).filter(Boolean));
+  groups.push({ key: 'basic', cat: '基本特約', title: '基本特約', sub: (versions.length ? '適用される版：' + versions.join('・') + '／' : '') + q.washitsu,
+    items: basic.map(c => item('basic', c, true, c.variant || null)),
+    note: basic.length ? null : '現在有効な基本特約がありません。「一覧・編集」で適用期間を確認してください。' });
+
+  const bg = q.building;
+  if (bg) {
+    const items = live.filter(c => c.category === '物件別追加特約' && matchesBuildingGroup(c.buildings, bg)).sort(bySort).map(c => item('bld', c, true));
+    groups.push({ key: 'bld', cat: '物件別追加特約', title: '物件別追加特約（' + bg.name + '）', items,
+      note: items.length ? '「ペット」「専用庭」など条件付きのものは、該当しなければチェックを外してください。' : 'この建物の追加特約は登録されていません。管理物件のページから追加できます。' });
+  }
+
+  const byHeadings = (cat, heads) => heads.flatMap(h => live.filter(c => c.category === cat && (c.heading || '(見出しなし)') === h).sort(bySort));
+  if (q.attrs.length) groups.push({ key: 'attr', cat: '属性別特約', title: '属性別特約', items: byHeadings('属性別特約', q.attrs).map(c => item('attr', c, true)) });
+  if (q.others.length) groups.push({ key: 'other', cat: 'その他の特約', title: 'その他の特約', items: byHeadings('その他の特約', q.others).map(c => item('other', c, true)) });
+
+  if (q.parking) {
+    const items = live.filter(c => c.category === '駐車場特約' && (!(c.buildings || []).length || matchesBuildingGroup(c.buildings, bg))).sort(bySort).map(c => item('park', c, false));
+    groups.push({ key: 'park', cat: '駐車場特約', title: '駐車場特約', items, note: '駐車場は契約パターン（単独／保証会社付き／一括／2台目など）ごとに内容が違うため、該当するものにチェックを入れてください。' });
+  }
+
+  if (q.keyword) {
+    const k = norm(q.keyword);
+    const hit = c => norm(c.body + ' ' + c.heading + ' ' + (c.memo || '') + ' ' + (c.buildings || []).join(' ')).includes(k);
+    groups.forEach(gr => { gr.items = gr.items.filter(i => hit(i.c)); });
+    const shownNow = new Set(groups.flatMap(gr => gr.items.map(i => i.c.id)));
+    const extra = live.filter(c => hit(c) && !shownNow.has(c.id)).sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || bySort(a, b)).map(c => item('kw', c, false, c.category));
+    groups.push({ key: 'kw', cat: null, title: 'キーワードに一致したその他の特約', items: extra, muted: true });
+  }
+  return groups;
+}
+
+// 建物が切り替わったら、建物の基本情報（和室）を条件に反映する
+let lastAppliedBuilding = null;
+function applyBuildingDefaults(g){
+  const name = g ? g.name : null;
+  if (name === lastAppliedBuilding) return;
+  lastAppliedBuilding = name;
+  if (!g || !g.meta) return;
+  if (g.meta.washitsu === 'あり') setWashitsu('和室あり');
+  else if (g.meta.washitsu === 'なし') setWashitsu('和室なし');
+}
+
+function buildingCardHtml(g){
+  const m = g.meta || {};
+  const facts = [['和室', m.washitsu], ['駐車場', m.parking], ['ペット', m.pet], ['楽器等の演奏', m.instrument], ['ガス', m.gas]]
+    .filter(x => x[1]).map(x => '<span><b>' + x[0] + '</b>' + esc(x[1]) + '</span>').join('');
+  const last = docsOf(g)[0];
+  let h = '<div class="bld-card"><h3>' + esc(g.name) + '<button class="linkbtn" data-open-building="' + esc(g.name) + '">管理物件のページを開く</button></h3>';
+  h += facts ? '<div class="facts">' + facts + '</div>' : '<div class="hint">基本情報は未登録です（管理物件のページで登録できます）</div>';
+  if (m.memo) h += '<div style="margin-top:6px; white-space:pre-wrap;">' + esc(m.memo) + '</div>';
+  if (last) h += '<div class="last"><span class="chip latest">前回作成</span>' + esc(fmtDateTime(last.created_at)) + (last.room ? '　' + esc(last.room) + '号室' : '') + (last.title ? '　' + esc(last.title) : '') +
+    '<button class="linkbtn" data-open-building="' + esc(g.name) + '">見る・編集する</button><button class="linkbtn" data-reuse-doc="' + last.id + '">この条件で作り直す</button></div>';
+  return h + '</div>';
+}
+
+function renderSearch(){
+  const q = readQuery();
+  const cands = q.buildingText ? buildingCandidates(q.buildingText) : [];
+  if (!q.buildingText) Q.building = null;
+  else if (!Q.building || !cands.some(g => g.name === Q.building.name)) Q.building = cands.length === 1 ? cands[0] : (cands.find(g => g.keys.has(norm(q.buildingText))) || null);
+  else Q.building = cands.find(g => g.name === Q.building.name);
+  $('q-building-cand').innerHTML = q.buildingText
+    ? (cands.length ? cands.slice(0, 12).map(g => '<button type="button" data-bname="' + esc(g.name) + '"' + (Q.building && g.name === Q.building.name ? ' class="sel"' : '') + '>' + esc(g.name) + '</button>').join('')
+                    : '<span class="hint">一致する建物がありません</span>')
+    : '';
+  applyBuildingDefaults(Q.building);
+  const q2 = readQuery(); q2.building = Q.building;
+
+  RESULT = computeResults(q2);
+  ORDER = [];  // 条件を変えたら並べ替えはやり直し
+  checked = new Map();
+  RESULT.forEach(gr => gr.items.forEach(i => checked.set(i.key, i.def)));
+
+  let html = '';
+  if (Q.building) html += buildingCardHtml(Q.building);
+  if (!q2.buildingText && !q2.attrs.length && !q2.others.length && !q2.parking && !q2.keyword) {
+    html += '<div class="note-box">左の条件を入れると、使う特約の候補がここに出ます。いまは契約日に有効な<b>基本特約</b>だけを表示しています。</div>';
+  }
+  RESULT_HEAD = html;
+  rerenderResults();
+}
+
+function renderGroup(gr, gi){
+  const count = gr.items.length;
+  let h = '<div class="group' + (gr.muted ? ' muted' : '') + '" data-gi="' + gi + '">';
+  h += '<div class="g-head"><h3>' + esc(gr.title) + '</h3><span class="g-sub">' + esc(gr.sub || (gr.cat ? CAT_DESC[gr.cat] : '')) + '</span><span class="g-sub">' + count + '件</span><span class="spacer"></span>';
+  if (count) h += '<button class="linkbtn" data-act="grp-all" data-gi="' + gi + '">すべて選択</button> <button class="linkbtn" data-act="grp-none" data-gi="' + gi + '">すべて外す</button>';
+  h += '</div>';
+  if (gr.note) h += '<div class="g-note">' + esc(gr.note) + '</div>';
+  let curHead = null, open = false;
+  gr.items.forEach(it => {
+    const head = it.c.heading;
+    if (head !== curHead) {
+      if (open) h += '</div>';
+      curHead = head; open = true;
+      const tags = uniq(gr.items.filter(x => x.c.heading === head).flatMap(x => (x.c.sub_tags || [])));
+      h += '<div class="h-block"><div class="h-title"><label><input type="checkbox" data-act="head" data-gi="' + gi + '" data-head="' + esc(head) + '"> ' + esc(head || '(見出しなし)') + '</label>' +
+        tags.map(t => '<span class="chip">' + esc(t) + '</span>').join('') + '</div>';
+    }
+    h += renderClauseRow(it);
+  });
+  if (open) h += '</div>';
+  if (!count) h += '<div class="empty">該当する特約はありません</div>';
+  return h + '</div>';
+}
+
+function renderClauseRow(it){
+  const c = it.c;
+  const long = c.body.length > 110 || c.body.split('\n').length > 2;
+  let meta = '';
+  if (P.hasPlaceholder(c.body)) meta += '<span class="chip edit">要編集（●●あり）</span>';
+  if (it.badge) meta += '<span class="chip ' + (/和室/.test(it.badge) ? 'swap' : 'cat') + '">' + esc(it.badge) + '</span>';
+  if (c.memo) meta += '<span class="chip memo">メモ：' + esc(c.memo) + '</span>';
+  return '<div class="clause"><input type="checkbox" data-act="item" data-key="' + esc(it.key) + '"' + (checked.get(it.key) ? ' checked' : '') + '>' +
+    '<div><div class="body' + (long ? ' clamp' : '') + '" data-act="expand" title="' + (long ? 'クリックで全文表示' : '') + '">' + markPh(c.body) + '</div>' +
+    (meta ? '<div class="meta">' + meta + '</div>' : '') + '</div></div>';
+}
+
+function syncHeadChecks(){
+  document.querySelectorAll('#results input[data-act=head]').forEach(hc => {
+    const its = RESULT[+hc.dataset.gi].items.filter(i => i.c.heading === hc.dataset.head);
+    const n = its.filter(i => checked.get(i.key)).length;
+    hc.checked = n > 0 && n === its.length; hc.indeterminate = n > 0 && n < its.length;
+  });
+}
+function selectedItems(){ return RESULT.flatMap(gr => gr.items.filter(i => checked.get(i.key))); }
+function updateSelbar(){
+  syncHeadChecks();
+  const n = selectedItems().length;
+  $('selbar').hidden = !n || $('panel-search').hidden;
+  $('selbar-count').textContent = n + '件 選択中';
+}
+function rerenderResults(){
+  let out = RESULT_HEAD;
+  RESULT.forEach((gr, gi) => { out += renderGroup(gr, gi); });
+  $('results').innerHTML = out;
+  updateSelbar();
+}
+
+$('results').addEventListener('click', (e) => {
+  const ob = e.target.closest('[data-open-building]');
+  if (ob) { openBuilding(ob.dataset.openBuilding); return; }
+  const rd = e.target.closest('[data-reuse-doc]');
+  if (rd) { reuseDoc(docs.find(d => d.id === +rd.dataset.reuseDoc)); return; }
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act;
+  if (act === 'expand') { t.classList.toggle('clamp'); return; }
+  if (act === 'grp-all' || act === 'grp-none') {
+    RESULT[+t.dataset.gi].items.forEach(i => checked.set(i.key, act === 'grp-all'));
+    rerenderResults();
+  }
+});
+$('results').addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.dataset.act === 'item') { checked.set(t.dataset.key, t.checked); updateSelbar(); }
+  if (t.dataset.act === 'head') {
+    RESULT[+t.dataset.gi].items.filter(i => i.c.heading === t.dataset.head).forEach(i => checked.set(i.key, t.checked));
+    document.querySelectorAll('#results .group[data-gi="' + t.dataset.gi + '"] input[data-act=item]').forEach(cb => { cb.checked = !!checked.get(cb.dataset.key); });
+    updateSelbar();
+  }
+});
+
+['q-building','q-keyword'].forEach(id => $(id).addEventListener('input', debounce(renderSearch, 200)));
+$('q-parking').addEventListener('change', renderSearch);
+document.querySelectorAll('input[name=q-washitsu]').forEach(r => r.addEventListener('change', renderSearch));
+$('q-attrs').addEventListener('change', renderSearch);
+$('q-others').addEventListener('change', renderSearch);
+$('q-building-cand').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-bname]'); if (!b) return;
+  $('q-building').value = b.dataset.bname;
+  Q.building = findBuilding(b.dataset.bname);
+  renderSearch();
+});
+document.querySelectorAll('[data-add-cat]').forEach(b => b.addEventListener('click', () => {
+  const cat = b.dataset.addCat;
+  openClause(null, { category: cat, heading: '', sort_order: Math.max(0, ...clauses.map(c => c.sort_order)) + 10 });
+  $('e-title').textContent = (cat === '属性別特約' ? '属性' : 'その他') + 'の項目を追加（見出しがチェック項目の名前になります）';
+  $('e-heading').focus();
+}));
+function resetQuery(){
+  $('q-building').value = ''; $('q-keyword').value = '';
+  $('q-parking').checked = false;
+  setWashitsu('和室なし');
+  document.querySelectorAll('#q-attrs input, #q-others input').forEach(i => i.checked = false);
+  Q.building = null; lastAppliedBuilding = null;
+}
+$('q-reset').addEventListener('click', () => { resetQuery(); renderSearch(); });
+
+// ---- コピー・保存 ----
+const FW = '０１２３４５６７８９';
+function numLabel(n, style){
+  if (style === 'none') return '';
+  if (style === 'half') return n + '.';
+  if (style === 'mixed') return n + '．';
+  return String(n).replace(/[0-9]/g, d => FW[+d]) + '．';
+}
+// ① 並べ替え：選んだ特約の並び。一度並べ替えた順番は、画面を閉じても条件を変えるまで保つ。
+let ORDER = [];
+let BUILT_TEXT = '';  // ②で自動作成した文章（手で直したかどうかの判定用）
+const clauseById = id => clauses.find(c => c.id === id);
+function syncOrder(){
+  const sel = uniq(selectedItems().map(i => i.c.id));
+  const keep = ORDER.filter(id => sel.includes(id));
+  sel.forEach(id => { if (!keep.includes(id)) keep.push(id); });
+  ORDER = keep;
+}
+function renderOrder(){
+  $('c-order').innerHTML = ORDER.length ? ORDER.map((id, i) => {
+    const c = clauseById(id);
+    return '<div class="ord-row" data-id="' + id + '"><span class="handle" data-handle title="つかんで上下にドラッグすると並び替えできます">⠿</span><span class="pos">' + (i + 1) + '</span>' +
+      '<div><div class="o-meta">' + esc(c.category) + '／' + esc(c.heading || '(見出しなし)') + (P.hasPlaceholder(c.body) ? '　<span class="chip edit">要編集</span>' : '') + '</div>' +
+      '<div class="o-body clamp" title="クリックで全文表示">' + markPh(c.body) + '</div></div>' +
+      '<button class="o-del" data-odel="' + id + '" title="この特約を外す">×</button></div>';
+  }).join('') : '<div class="empty">特約が選ばれていません</div>';
+}
+function showCopyStep(n){
+  $('c-step1').hidden = n !== 1; $('c-step2').hidden = n !== 2;
+  $('c-next').hidden = n !== 1; $('c-back').hidden = n !== 2; $('c-do').hidden = n !== 2;
+  document.querySelectorAll('#dlg-copy [data-step-label]').forEach(s => s.classList.toggle('on', +s.dataset.stepLabel === n));
+}
+function buildCopyText(){
+  const style = $('c-style').value, start = parseInt($('c-start').value, 10) || 1;
+  let n = start;
+  const text = ORDER.map(id => numLabel(n++, style) + clauseById(id).body).join('\n');
+  const ph = ORDER.map(clauseById).filter(c => P.hasPlaceholder(c.body)).length;
+  $('c-warn').hidden = !ph;
+  $('c-warn').textContent = '「●●」（未確定の値）を含む特約が ' + ph + '件あります。貼り付ける前に書き換えてください。';
+  $('c-text').value = text; BUILT_TEXT = text;
+}
+$('selbar-copy').addEventListener('click', () => {
+  syncOrder(); renderOrder(); showCopyStep(1);
+  $('c-building').value = Q.building ? Q.building.name : $('q-building').value.trim();
+  $('c-room').value = ''; $('c-title').value = '';
+  $('dlg-copy').showModal();
+  $('c-step1').scrollTop = 0;
+});
+$('c-next').addEventListener('click', () => {
+  if (!ORDER.length) { toast('特約が選ばれていません', true); return; }
+  buildCopyText(); showCopyStep(2); $('c-step2').scrollTop = 0;
+});
+$('c-back').addEventListener('click', () => {
+  if ($('c-text').value !== BUILT_TEXT && !confirm('最終確認の画面で直した文章は元に戻ります。並べ替えに戻りますか？')) return;
+  renderOrder(); showCopyStep(1);
+});
+$('c-order').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-odel]');
+  if (del) {
+    const id = +del.dataset.odel;
+    ORDER = ORDER.filter(x => x !== id);
+    RESULT.forEach(gr => gr.items.forEach(i => { if (i.c.id === id) checked.set(i.key, false); }));
+    rerenderResults(); renderOrder();
+    return;
+  }
+  const b = e.target.closest('.o-body'); if (b) b.classList.toggle('clamp');
+});
+makeSortable($('c-order'), '.ord-row', '[data-handle]', () => $('c-step1'), (hd, newIds) => { ORDER = newIds; });
+$('c-style').addEventListener('change', () => { if ($('c-text').value === BUILT_TEXT || confirm('番号を振り直すと、直した文章は元に戻ります。よろしいですか？')) buildCopyText(); });
+$('c-start').addEventListener('change', () => { if ($('c-text').value === BUILT_TEXT || confirm('番号を振り直すと、直した文章は元に戻ります。よろしいですか？')) buildCopyText(); });
+$('c-do').addEventListener('click', async () => { await copyText($('c-text').value); toast('コピーしました。契約書に貼り付けてください。'); });
+$('selbar-clear').addEventListener('click', () => { checked.forEach((v, k) => checked.set(k, false)); ORDER = []; rerenderResults(); });
+$('c-save').addEventListener('click', async () => {
+  const building = $('c-building').value.trim();
+  if (!building) { toast('建物名を入力してください', true); return; }
+  const g = findBuilding(building);
+  const room = normRoom($('c-room').value);
+  if (!room && !confirm('号室が入力されていません。「号室未設定」として保存しますか？')) { $('c-room').focus(); return; }
+  const had = g && docsOf(g).some(d => roomKey(d) === (room || ''));
+  const q = readQuery();
+  const row = {
+    building: g ? g.name : building, room, title: $('c-title').value.trim() || null,
+    contract_date: null, body: $('c-text').value,
+    conditions: { washitsu: q.washitsu, attrs: q.attrs, others: q.others, parking: q.parking, keyword: q.keyword,
+                  style: $('c-style').value, start: parseInt($('c-start').value, 10) || 1 },
+    clause_ids: ORDER.slice()  // 並べ替えた順番のまま保存する
+  };
+  const r = await sb.from('tokuyaku_documents').insert(row);
+  if (r.error) { toast('保存に失敗しました：' + r.error.message, true); return; }
+  toast('「' + row.building + '」' + (room ? room + '号室' : '（号室未設定）') + 'の特約事項として保存しました' + (had ? '。前のものは「過去の版」に残っています' : ''));
+  $('dlg-copy').close();
+  await loadAll();
+});
+
+// 保存した特約の条件で、検索画面を作り直す
+function reuseDoc(d){
+  if (!d) return;
+  resetQuery();
+  const c = d.conditions || {};
+  $('q-building').value = d.building;
+  Q.building = findBuilding(d.building); lastAppliedBuilding = Q.building ? Q.building.name : null;
+  setWashitsu(c.washitsu || '和室なし');
+  document.querySelectorAll('#q-attrs input').forEach(i => i.checked = (c.attrs || []).includes(i.value));
+  document.querySelectorAll('#q-others input').forEach(i => i.checked = (c.others || []).includes(i.value));
+  $('q-parking').checked = !!c.parking; $('q-keyword').value = c.keyword || '';
+  renderSearch();
+  // 前回チェックしていた条文だけを選択状態にする
+  const ids = new Set(d.clause_ids || []);
+  if (ids.size) {
+    RESULT.forEach(gr => gr.items.forEach(i => checked.set(i.key, ids.has(i.c.id))));
+    // 並べ替えた順番も再現する
+    ORDER = (d.clause_ids || []).filter(id => clauseById(id));
+    syncOrder(); rerenderResults();
+  }
+  showTab('search');
+  toast('前回の条件を読み込みました（' + fmtDateTime(d.created_at) + '作成分）');
+}
+
+// ================= 管理物件 =================
+let BSEL = null; // 開いている建物名
+function renderBuildings(){
+  if (BSEL) { renderBuildingDetail(); return; }
+  const kw = norm($('b-keyword').value), status = $('b-status').value;
+  const rows = BIDX.filter(g => (status === 'all' || (status === 'ended') === isEnded(g)) && (!kw || Array.from(g.keys).some(k => k.includes(kw))));
+  let h = '<table class="list bld-list"><tr><th>建物名</th><th>和室</th><th>ガス</th><th>駐車場</th><th>ペット</th><th>楽器</th><th>物件別特約</th><th>前回作成</th></tr>';
+  rows.forEach(g => {
+    const m = g.meta || {};
+    const cn = clauses.filter(c => !c.archived && matchesBuildingGroup(c.buildings, g)).length;
+    const last = docsOf(g)[0];
+    h += '<tr' + (isEnded(g) ? ' class="ended"' : '') + '><td><button class="b-name" data-bname="' + esc(g.name) + '">' + esc(g.name) + '</button>' +
+      (isEnded(g) ? '<br><span class="chip old">管理終了 ' + esc(m.ended_at.replace(/-/g, '/')) + '</span>' : '') + '</td><td class="nowrap">' + esc(m.washitsu || '') + '</td><td class="nowrap">' + esc(m.gas || '') +
+      '</td><td class="nowrap">' + esc(m.parking || '') + '</td><td>' + esc(m.pet || '') + '</td><td>' + esc(m.instrument || '') +
+      '</td><td class="nowrap">' + cn + '件</td><td class="nowrap">' + (last ? esc(fmtDateTime(last.created_at)) : '') + '</td></tr>';
+  });
+  h += '</table>';
+  const endedCount = BIDX.filter(isEnded).length;
+  const note = '<div class="hint" style="margin-bottom:8px;">' + rows.length + '件　建物名をクリックすると、基本情報・前回作成した特約事項・物件別の特約を見たり編集したりできます。' +
+    (status === 'active' && endedCount ? '（管理終了した物件 ' + endedCount + '件は「管理終了」で表示できます）' : '') + '</div>';
+  const endedHits = status === 'active' && kw ? BIDX.filter(g => isEnded(g) && Array.from(g.keys).some(k => k.includes(kw))).length : 0;
+  $('buildings-body').innerHTML = rows.length ? note + h
+    : '<div class="empty">' + (kw ? '該当する物件がありません' : (status === 'ended' ? '管理終了した物件はありません' : '管理物件はまだありません')) +
+      (endedHits ? '<br>管理終了した物件に ' + endedHits + '件一致しています。<button class="linkbtn" id="b-show-ended">管理終了の物件を表示</button>' : '') + '</div>';
+}
+function isEnded(g){ return !!(g && g.meta && g.meta.ended_at); }
+$('b-keyword').addEventListener('input', debounce(renderBuildings, 200));
+$('b-status').addEventListener('change', renderBuildings);
+$('buildings-body').addEventListener('click', (e) => { if (e.target.closest('#b-show-ended')) { $('b-status').value = 'ended'; renderBuildings(); } });
+$('buildings-body').addEventListener('click', (e) => { const b = e.target.closest('[data-bname]'); if (b) openBuilding(b.dataset.bname); });
+$('b-new').addEventListener('click', async () => {
+  const name = (prompt('追加する建物名を入力してください') || '').trim();
+  if (!name) return;
+  const g = findBuilding(name);
+  if (g) { toast('「' + g.name + '」はすでにあります'); openBuilding(g.name); return; }
+  const r = await sb.from('tokuyaku_buildings').insert({ name });
+  if (r.error) { toast('追加に失敗しました：' + r.error.message, true); return; }
+  await loadAll(); openBuilding(name);
+});
+
+function openBuilding(name){ if (BSEL !== name) { DOC_OPEN.clear(); ROOM_OPEN.clear(); } BSEL = name; showTab('buildings'); renderBuildingDetail(); }
+function closeBuilding(){ BSEL = null; $('b-detail-view').hidden = true; $('b-list-view').hidden = false; renderBuildings(); }
+
+function renderBuildingDetail(){
+  // 自動保存待ちの特約事項は、描き直しても入力内容が消えないよう先に引き継ぐ
+  DOC_TIMERS.forEach((_, id) => { const f = readDocForm(id), d = docs.find(x => x.id === id); if (f && d) Object.assign(d, f); });
+  const g = findBuilding(BSEL);
+  if (!g) { closeBuilding(); return; }
+  BSEL = g.name;
+  $('b-list-view').hidden = true; $('b-detail-view').hidden = false;
+  const m = g.meta || {};
+  const sel = (id, opts, v) => '<select id="' + id + '" style="width:100%">' + opts.map(o => '<option value="' + esc(o) + '"' + (o === (v || '') ? ' selected' : '') + '>' + esc(o || '（未設定）') + '</option>').join('') + '</select>';
+  let h = '<div class="toolbar"><button class="btn secondary small" id="bd-back">← 管理物件一覧へ</button><span class="spacer"></span>' +
+    '<button class="btn" id="bd-search">この物件で特約事項を作成</button></div>';
+  h += '<h2>' + esc(g.name) + '</h2>';
+  if (isEnded(g)) h += '<div class="warn-box" style="margin-top:8px">この物件は <b>' + esc(m.ended_at.replace(/-/g, '/')) + '</b> に管理終了しています。内容の確認・編集はできます。' +
+    '<button class="btn secondary small" id="bd-reopen" style="margin-left:8px">管理を再開する</button></div>';
+  if (g.names.size > 1) h += '<div class="hint">登録されている表記：' + Array.from(g.names).map(esc).join('／') + '</div>';
+
+  // 基本情報
+  h += '<div class="b-sec b-info"><h3>基本情報<span class="spacer"></span><button class="btn small" id="bd-save">保存</button></h3>';
+  h += '<div class="info-grid">' +
+    '<div><label class="field" for="bd-washitsu">和室</label>' + sel('bd-washitsu', ['', 'あり', 'なし'], m.washitsu) + '</div>' +
+    '<div><label class="field" for="bd-parking">駐車場</label>' + sel('bd-parking', ['', 'あり', 'なし'], m.parking) + '</div>' +
+    '<div><label class="field" for="bd-pet">ペット</label><input type="text" id="bd-pet" value="' + esc(m.pet || '') + '" placeholder="例：不可"></div>' +
+    '<div><label class="field" for="bd-instrument">楽器等の演奏</label><input type="text" id="bd-instrument" value="' + esc(m.instrument || '') + '" placeholder="例：深夜・早朝は不可"></div>' +
+    '<div><label class="field" for="bd-gas">ガス</label>' + sel('bd-gas', ['', '都市ガス', 'プロパンガス', 'オール電化'], m.gas) + '</div>' +
+    '<div class="info-memo"><label class="field" for="bd-memo">メモ</label><input type="text" id="bd-memo" value="' + esc(m.memo || '') + '"></div>' +
+    '</div>';
+  h += '<div class="hint">和室は「特約事項作成」でこの建物を選ぶと自動で条件に入ります。</div></div>';
+
+  // 作成した特約事項
+  const ds = docsOf(g);
+  const rooms = roomGroups(ds);
+  if (rooms.length && !ROOM_OPEN.size) ROOM_OPEN.add(roomKey(ds[0])); // 最後に作成した号室を開いておく
+  h += '<div class="b-sec"><h3>作成した特約事項（号室ごと）<span class="chip">' + rooms.filter(r => r.key).length + '室</span></h3>';
+  h += '<div class="toolbar"><input type="text" id="bd-room-new" placeholder="号室（例：101）" style="width:150px">' +
+    '<button class="btn small" data-dnew="blank">＋ この号室で新しく作成</button>' +
+    (ds.length ? '<button class="btn secondary small" data-dnew="dup">最新のものを複製して作成</button>' : '') + '</div>';
+  h += '<div class="hint" style="margin-bottom:8px;">同じ号室で作り直すと、前のものは「過去の版」としてその号室に残ります。本文・号室・契約日・メモは自由に書き換えられ、入力すると自動で保存されます。</div>';
+  if (!ds.length) h += '<div class="empty">まだありません。号室を入れて「＋ この号室で新しく作成」で直接書くか、「この物件で特約事項を作成」で選んだ特約を最終確認の画面から保存してください。</div>';
+  rooms.forEach(rm => {
+    const latest = rm.docs[0], open = ROOM_OPEN.has(rm.key);
+    h += '<div class="room" data-room="' + esc(rm.key) + '"><div class="room-head" data-room-toggle="' + esc(rm.key) + '">' +
+      '<b class="room-name">' + (rm.key ? esc(rm.key) + '号室' : '号室未設定') + '</b>' +
+      '<span class="hint">最終作成 ' + esc(fmtDateTime(latest.created_at)) + '</span>' + (latest.title ? '<span>' + esc(latest.title) + '</span>' : '') +
+      (rm.docs.length > 1 ? '<span class="chip">過去の版 ' + (rm.docs.length - 1) + '件</span>' : '') +
+      '<span class="spacer"></span><span class="hint">' + (open ? '▲' : '▼') + '</span></div>';
+    h += '<div class="room-body"' + (open ? '' : ' hidden') + '>';
+    h += docBlockHtml(latest, 'latest');
+    if (rm.docs.length > 1) {
+      h += '<div class="room-hist-title">過去の版</div>';
+      rm.docs.slice(1).forEach(d => { h += docBlockHtml(d, 'old'); });
+    }
+    h += '</div></div>';
+  });
+  h += '</div>';
+
+  // 物件別の特約
+  const cs = clauses.filter(c => !c.archived && matchesBuildingGroup(c.buildings, g)).sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || bySort(a, b));
+  h += '<div class="b-sec"><h3>この建物の特約<span class="chip">' + cs.length + '件</span><span class="spacer"></span><button class="btn secondary small" id="bd-pick-clause">＋ 見出しから選んで追加</button><button class="btn small" id="bd-add-clause">＋ 特約を直接入力して追加</button></h3>';
+  if (!cs.length) h += '<div class="empty">登録されていません</div>';
+  else {
+    // カテゴリごとに分けて、その中でドラッグで並び替えられるようにする（見出しをまたいで動かせる）
+    const cats = uniq(cs.map(c => c.category));
+    h += '<div class="scroll-x"><table class="list bld-clauses"><thead><tr><th style="width:80px">並び順</th><th style="width:24%">見出し</th><th>本文</th></tr></thead>';
+    cats.forEach(cat => {
+      const rows = cs.filter(c => c.category === cat);
+      h += '<tbody>';
+      if (cats.length > 1) h += '<tr class="cat-row"><td colspan="3">' + esc(cat) + '</td></tr>';
+      rows.forEach((c, pos) => {
+        h += '<tr data-id="' + c.id + '" data-cid="' + c.id + '" style="cursor:pointer"><td class="nowrap">' +
+          (rows.length > 1 ? '<span class="handle" data-bhandle title="つかんで上下にドラッグすると並び替えできます">⠿</span>' : '<span class="handle off">⠿</span>') +
+          '<span class="pos">' + (pos + 1) + '</span></td><td>' + esc(c.heading) +
+          (c.sub_tags || []).map(t => ' <span class="chip">' + esc(t) + '</span>').join('') + '</td><td style="white-space:pre-wrap">' + markPh(c.body) +
+          (c.memo ? '<div class="hint">メモ：' + esc(c.memo) + '</div>' : '') + '</td></tr>';
+      });
+      h += '</tbody>';
+    });
+    h += '</table></div><div class="hint">行をクリックすると編集できます。左の「⠿」をつかんで上下にドラッグすると、順番を入れ替えられます（特約事項作成で出てくる順番も変わります）。</div>';
+  }
+  h += '</div>';
+
+  // 名前の統合
+  h += '<div class="b-sec"><h3>建物名の変更・統合</h3><div class="toolbar"><input type="text" id="bd-rename" list="dl-buildings" style="flex:1; min-width:200px" placeholder="新しい建物名（既存の建物名を選ぶと統合）">' +
+    '<button class="btn danger small" id="bd-rename-do">名前を書き換える</button></div><div class="hint">この建物に紐づく特約・作成した特約事項の建物名を、すべてこの名前に書き換えます。</div></div>';
+
+  // 管理終了・削除
+  h += '<div class="b-sec" style="border-color:var(--orange)"><h3 style="color:var(--orange-ink)">管理終了<span class="spacer"></span>' +
+    (isEnded(g) ? '<button class="btn secondary small" id="bd-reopen2">管理を再開する</button>'
+                : '<input type="date" id="bd-ended-at" value="' + todayStr() + '" style="padding:5px 8px"><button class="btn orange small" id="bd-end">管理終了にする</button>') + '</h3>' +
+    '<div class="hint">管理終了にすると、管理物件の一覧（管理中）と「特約事項作成」の建物名の候補に出なくなります。特約・作成した特約事項・基本情報はすべて残り、' +
+    '一覧の「管理終了」でいつでも検索・確認できます。</div>' +
+    '<details class="danger-zone"><summary>完全に削除する（テスト用の建物など、記録を残す必要がない場合）</summary>' +
+    '<div class="hint">この建物だけの特約は「一覧・編集」の「削除済み」に移ります。作成した特約事項と基本情報は削除され、元に戻せません。</div>' +
+    '<button class="btn danger small" id="bd-delete" style="margin-top:6px">この建物を完全に削除</button></details></div>';
+
+  $('b-detail-view').innerHTML = h;
+  document.querySelectorAll('#b-detail-view textarea.autogrow').forEach(autoGrow);
+}
+
+$('b-detail-view').addEventListener('click', async (e) => {
+  const t = e.target;
+  const g = findBuilding(BSEL);
+  if (t.closest('#bd-back')) { closeBuilding(); return; }
+  if (t.closest('#bd-search')) { resetQuery(); $('q-building').value = g.name; Q.building = g; showTab('search'); renderSearch(); return; }
+  if (t.closest('#bd-save')) { await saveBuildingInfo(g); return; }
+  if (t.closest('#bd-add-clause')) {
+    const same = clauses.filter(c => matchesBuildingGroup(c.buildings, g) && c.category === '物件別追加特約');
+    openClause(null, { category: '物件別追加特約', heading: (same[0] && same[0].heading) || g.name, buildings: [g.name], sort_order: same.length ? Math.max(...same.map(c => c.sort_order)) + 1 : Math.max(0, ...clauses.map(c => c.sort_order)) + 10 });
+    return;
+  }
+  if (t.closest('#bd-rename-do')) { await renameBuilding(g, $('bd-rename').value.trim()); return; }
+  if (t.closest('#bd-delete')) { await deleteBuilding(g); return; }
+  if (t.closest('#bd-end')) { await setEnded(g, $('bd-ended-at').value || todayStr()); return; }
+  if (t.closest('#bd-reopen') || t.closest('#bd-reopen2')) { await setEnded(g, null); return; }
+  if (t.closest('#bd-pick-clause')) { openPick(g); return; }
+  if (t.closest('.handle')) return; // ドラッグ用のつまみはクリックしても編集を開かない
+  const cr = t.closest('tr[data-cid]'); if (cr) { openClause(clauses.find(c => c.id === +cr.dataset.cid)); return; }
+  const dn = t.closest('[data-dnew]');
+  if (dn) {
+    const room = normRoom($('bd-room-new').value);
+    if (!room) { toast('号室を入力してください（例：101）', true); $('bd-room-new').focus(); return; }
+    await createDoc(g, dn.dataset.dnew === 'dup' ? docsOf(g)[0] : null, room);
+    return;
+  }
+  const rt = t.closest('[data-room-toggle]');
+  if (rt) {
+    const key = rt.dataset.roomToggle, body = rt.nextElementSibling;
+    body.hidden = !body.hidden;
+    if (body.hidden) ROOM_OPEN.delete(key); else { ROOM_OPEN.add(key); body.querySelectorAll('textarea.autogrow').forEach(autoGrow); }
+    rt.querySelector('.spacer + .hint').textContent = body.hidden ? '▼' : '▲';
+    return;
+  }
+  const tg = t.closest('[data-doc-toggle]');
+  if (tg) {
+    const id = +tg.dataset.docToggle, body = tg.nextElementSibling;
+    body.hidden = !body.hidden;
+    if (body.hidden) DOC_OPEN.delete(id); else { DOC_OPEN.add(id); body.querySelectorAll('textarea.autogrow').forEach(autoGrow); }
+    tg.querySelector('[data-arrow]').textContent = body.hidden ? '▼' : '▲';
+    return;
+  }
+  const da = t.closest('[data-dact]');
+  if (da) {
+    const box = da.closest('[data-doc]'); const d = docs.find(x => x.id === +box.dataset.doc);
+    if (da.dataset.dact === 'copy') { await copyText(box.querySelector('[data-df=body]').value); toast('コピーしました'); }
+    if (da.dataset.dact === 'reuse') { await flushDocSave(d.id); reuseDoc(d); }
+    if (da.dataset.dact === 'dup') { await flushDocSave(d.id); await createDoc(g, d, d.room); }
+    if (da.dataset.dact === 'delete') {
+      if (!confirm(fmtDateTime(d.created_at) + ' に作成した特約事項を削除しますか？（元に戻せません）')) return;
+      clearTimeout(DOC_TIMERS.get(d.id)); DOC_TIMERS.delete(d.id);
+      const r = await sb.from('tokuyaku_documents').delete().eq('id', d.id);
+      if (r.error) { toast('削除に失敗しました：' + r.error.message, true); return; }
+      toast('削除しました'); await loadAll();
+    }
+  }
+});
+
+// ---- 作成した特約事項：自由に編集・自動保存 ----
+const DOC_OPEN = new Set();     // 開いている過去の版
+const ROOM_OPEN = new Set();    // 開いている号室
+const DOC_TIMERS = new Map();   // id -> 自動保存タイマー
+// 号室の表記ゆれ（全角数字・「号室」「号」付き）をそろえる
+function normRoom(s){ return nfkcStr(s).replace(/\s+/g, '').replace(/号室?$/, '') || null; }
+function nfkcStr(s){ return String(s == null ? '' : s).normalize('NFKC').trim(); }
+function roomKey(d){ return normRoom(d.room) || ''; }
+// 号室ごとにまとめる（新しい順）。号室は 101, 102, 201… の順、号室未設定は最後
+function roomGroups(ds){
+  const map = new Map();
+  ds.forEach(d => { const k = roomKey(d); if (!map.has(k)) map.set(k, []); map.get(k).push(d); });
+  return Array.from(map, ([key, docs]) => ({ key, docs }))
+    .sort((a, b) => (!a.key) - (!b.key) || a.key.localeCompare(b.key, 'ja', { numeric: true }));
+}
+function docHeadHtml(d, kind){
+  return (kind === 'latest' ? '<span class="chip latest">最新</span>' : '<span class="chip">過去の版</span>') + '<b>' + esc(fmtDateTime(d.created_at)) + '</b>' +
+    (d.title ? '<span>' + esc(d.title) + '</span>' : '') +
+    (d.contract_date ? '<span class="hint">契約日 ' + esc(d.contract_date.replace(/-/g, '/')) + '</span>' : '');
+}
+function docBlockHtml(d, kind){
+  const open = kind === 'latest' || DOC_OPEN.has(d.id);
+  const hasCond = (d.clause_ids || []).length || Object.keys(d.conditions || {}).length;
+  return '<div class="doc' + (kind === 'old' ? ' old' : '') + '" data-doc="' + d.id + '" data-kind="' + kind + '">' +
+    '<div class="doc-head"' + (kind === 'old' ? ' data-doc-toggle="' + d.id + '"' : '') + '>' + docHeadHtml(d, kind) +
+    '<span class="spacer"></span><span class="doc-status" data-status></span>' + (kind === 'old' ? '<span class="hint" data-arrow>' + (open ? '▲' : '▼') + '</span>' : '') + '</div>' +
+    '<div class="doc-body"' + (open ? '' : ' hidden') + '>' +
+    '<div class="row3"><div><label class="field">号室</label><input type="text" data-df="room" value="' + esc(d.room || '') + '" placeholder="例：101"></div>' +
+    '<div><label class="field">契約日</label><input type="date" data-df="contract_date" value="' + esc(d.contract_date || '') + '"></div>' +
+    '<div><label class="field">メモ</label><input type="text" data-df="title" value="' + esc(d.title || '') + '" placeholder="例：法人契約・駐車場あり"></div></div>' +
+    '<textarea data-df="body" class="autogrow" rows="10" placeholder="特約事項の本文を自由に書けます">' + esc(d.body) + '</textarea>' +
+    '<div class="toolbar" style="margin:8px 0 0"><button class="btn secondary small" data-dact="copy">コピー</button>' +
+    '<button class="btn secondary small" data-dact="dup">これをもとにこの号室で作り直す</button>' +
+    (hasCond ? '<button class="btn secondary small" data-dact="reuse">この条件で特約事項作成を開く</button>' : '') +
+    '<span class="spacer"></span><button class="btn danger small" data-dact="delete">削除</button></div></div></div>';
+}
+function autoGrow(ta){ if (!ta.offsetParent) return; ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight + 2, 160) + 'px'; }
+function docStatus(id, text, isErr){
+  const el = document.querySelector('#b-detail-view [data-doc="' + id + '"] [data-status]');
+  if (el) { el.textContent = text; el.classList.toggle('err', !!isErr); }
+}
+function readDocForm(id){
+  const box = document.querySelector('#b-detail-view [data-doc="' + id + '"]');
+  if (!box) return null;
+  const v = f => box.querySelector('[data-df=' + f + ']').value;
+  return { body: v('body'), room: v('room').trim() || null, title: v('title').trim() || null, contract_date: v('contract_date') || null };
+}
+async function saveDoc(id){
+  DOC_TIMERS.delete(id);
+  const d = docs.find(x => x.id === id), form = readDocForm(id);
+  if (!d || !form) return;
+  docStatus(id, '保存中…');
+  const payload = { ...form, room: normRoom(form.room), updated_at: nowIso() };
+  const roomChanged = roomKey(d) !== (payload.room || '');
+  const r = await sb.from('tokuyaku_documents').update(payload).eq('id', id);
+  if (r.error) { docStatus(id, '保存に失敗しました', true); toast('保存に失敗しました：' + r.error.message, true); return; }
+  Object.assign(d, payload);
+  if (roomChanged) {
+    // 号室を書き換えたら、その号室の中に移す
+    ROOM_OPEN.add(payload.room || '');
+    renderBuildingDetail();
+    toast((payload.room ? payload.room + '号室' : '号室未設定') + 'に移しました');
+    return;
+  }
+  const box = document.querySelector('#b-detail-view [data-doc="' + id + '"]');
+  const head = box && box.querySelector('.doc-head');
+  if (head) {
+    const kind = box.dataset.kind;
+    head.innerHTML = docHeadHtml(d, kind) + '<span class="spacer"></span><span class="doc-status" data-status></span>' + (kind === 'old' ? '<span class="hint" data-arrow>▲</span>' : '');
+  }
+  const t = new Date(); docStatus(id, '保存しました ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'));
+}
+function scheduleDocSave(id){
+  clearTimeout(DOC_TIMERS.get(id));
+  docStatus(id, '編集中…');
+  DOC_TIMERS.set(id, setTimeout(() => saveDoc(id), 800));
+}
+async function flushDocSave(id){ if (DOC_TIMERS.has(id)) { clearTimeout(DOC_TIMERS.get(id)); await saveDoc(id); } }
+async function createDoc(g, from, room){
+  room = normRoom(room);
+  const had = docsOf(g).some(d => roomKey(d) === (room || ''));
+  const row = { building: g.name, contract_date: null, body: from ? from.body : '',
+    room, title: from && from.title ? from.title : null,
+    conditions: from ? (from.conditions || {}) : {}, clause_ids: from ? (from.clause_ids || []) : [] };
+  const r = await sb.from('tokuyaku_documents').insert(row).select().single();
+  if (r.error) { toast('作成に失敗しました：' + r.error.message, true); return; }
+  ROOM_OPEN.clear(); ROOM_OPEN.add(room || '');
+  const label = room ? room + '号室' : '号室未設定';
+  toast(label + 'に' + (from ? '複製して作成しました。' : '新しく作成しました。') + (had ? '前のものは「過去の版」に残っています。' : ''));
+  await loadAll();
+  const ta = document.querySelector('#b-detail-view [data-doc="' + r.data.id + '"] [data-df=body]');
+  if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); }
+}
+$('b-detail-view').addEventListener('input', (e) => {
+  const box = e.target.closest('[data-doc]');
+  if (!box || !e.target.dataset.df) return;
+  if (e.target.dataset.df === 'room') { docStatus(+box.dataset.doc, '号室は入力欄から離れると保存されます'); return; }
+  if (e.target.classList.contains('autogrow')) autoGrow(e.target);
+  scheduleDocSave(+box.dataset.doc);
+});
+// 号室は打ち終わってから保存する（途中の「1」「10」で別の号室に移らないように）
+$('b-detail-view').addEventListener('change', (e) => {
+  const box = e.target.closest('[data-doc]');
+  if (box && e.target.dataset.df === 'room') { clearTimeout(DOC_TIMERS.get(+box.dataset.doc)); saveDoc(+box.dataset.doc); }
+});
+$('b-detail-view').addEventListener('focusout', (e) => {
+  const box = e.target.closest && e.target.closest('[data-doc]');
+  if (box && e.target.dataset.df) flushDocSave(+box.dataset.doc);
+});
+window.addEventListener('beforeunload', (e) => { if (DOC_TIMERS.size) { e.preventDefault(); e.returnValue = ''; } });
+
+async function saveBuildingInfo(g){
+  const payload = {
+    name: g.name,
+    washitsu: $('bd-washitsu').value || null, parking: $('bd-parking').value || null, pet: $('bd-pet').value.trim() || null,
+    instrument: $('bd-instrument').value.trim() || null, gas: $('bd-gas').value || null,  // 別名は画面から外したので、登録済みの値はそのまま残す
+    memo: $('bd-memo').value.trim() || null, updated_at: nowIso()
+  };
+  const r = g.meta ? await sb.from('tokuyaku_buildings').update(payload).eq('id', g.meta.id) : await sb.from('tokuyaku_buildings').insert(payload);
+  if (r.error) { toast('保存に失敗しました：' + r.error.message, true); return; }
+  lastAppliedBuilding = null;
+  toast('基本情報を保存しました'); await loadAll();
+}
+
+// ---- 見出しから選んで、この建物の特約として追加する（元の条文を複製する） ----
+const PICK_CATS = ['物件別追加特約', 'その他の特約', '属性別特約', '駐車場特約'];
+let PICK = null; // { g, sel: Set<条文ID>, open: Set<グループのキー> }
+function pickGroups(g){
+  const today = todayStr();
+  const src = clauses.filter(c => !c.archived && PICK_CATS.includes(c.category) && isValidOn(c, today) && !matchesBuildingGroup(c.buildings, g));
+  const bpos = c => { const b = c.buildings && c.buildings[0] ? findBuilding(c.buildings[0]) : null; return b ? BIDX.indexOf(b) : -1; };
+  src.sort((a, b) => PICK_CATS.indexOf(a.category) - PICK_CATS.indexOf(b.category) || (a.category === '物件別追加特約' ? bpos(a) - bpos(b) : 0) || bySort(a, b));
+  const map = new Map();
+  src.forEach(c => {
+    const key = c.category + '|' + c.heading;
+    if (!map.has(key)) map.set(key, { key, cat: c.category, heading: c.heading, items: [] });
+    map.get(key).items.push(c);
+  });
+  return Array.from(map.values());
+}
+function openPick(g){
+  PICK = { g, sel: new Set(), open: new Set() };
+  $('pk-title').textContent = '見出しから選んで「' + g.name + '」に追加';
+  $('pk-cat').innerHTML = '<option value="">すべてのカテゴリ</option>' + PICK_CATS.map(c => '<option>' + c + '</option>').join('');
+  $('pk-keyword').value = '';
+  const heads = uniq(clauses.filter(c => !c.archived && c.category === '物件別追加特約' && matchesBuildingGroup(c.buildings, g)).sort(bySort).map(c => c.heading));
+  $('dl-bld-headings').innerHTML = uniq([...heads, g.name]).map(h => '<option value="' + esc(h) + '">').join('');
+  $('pk-heading').value = heads[0] || g.name;
+  renderPick();
+  $('dlg-pick').showModal();
+}
+function renderPick(){
+  const g = PICK.g, cat = $('pk-cat').value, kw = norm($('pk-keyword').value);
+  const own = new Set(clauses.filter(c => !c.archived && matchesBuildingGroup(c.buildings, g)).map(c => norm(c.body)));
+  let groups = pickGroups(g).filter(gr => !cat || gr.cat === cat);
+  if (kw) groups = groups.filter(gr => norm(gr.heading + ' ' + gr.items.map(c => c.body + ' ' + (c.buildings || []).join(' ') + ' ' + (c.sub_tags || []).join(' ')).join(' ')).includes(kw));
+  let h = '';
+  groups.forEach(gr => {
+    const open = kw || PICK.open.has(gr.key);
+    const selectable = gr.items.filter(c => !own.has(norm(c.body)));
+    const n = selectable.filter(c => PICK.sel.has(c.id)).length;
+    h += '<div class="pk-group"><div class="pk-head" data-pk-toggle="' + esc(gr.key) + '">' +
+      '<input type="checkbox" data-pk-head="' + esc(gr.key) + '"' + (selectable.length && n === selectable.length ? ' checked' : '') + (selectable.length ? '' : ' disabled') + '>' +
+      '<b>' + esc(gr.heading || '(見出しなし)') + '</b><span class="chip cat">' + esc(gr.cat) + '</span>' +
+      uniq(gr.items.flatMap(c => c.buildings || [])).map(b => '<span class="chip">' + esc(b) + (isEnded(findBuilding(b)) ? '（管理終了）' : '') + '</span>').join('') +
+      '<span class="hint">' + gr.items.length + '条</span><span class="spacer"></span><span class="hint">' + (open ? '▲' : '▼') + '</span></div>' +
+      '<div class="pk-body"' + (open ? '' : ' hidden') + '>' + gr.items.map(c => {
+        const dup = own.has(norm(c.body));
+        return '<label class="pk-clause' + (dup ? ' dup' : '') + '"><input type="checkbox" data-pk-id="' + c.id + '"' + (PICK.sel.has(c.id) && !dup ? ' checked' : '') + (dup ? ' disabled' : '') + '>' +
+          '<div class="b">' + markPh(c.body) + (dup ? '　<span class="chip">登録済み</span>' : '') + '</div></label>';
+      }).join('') + '</div></div>';
+  });
+  $('pk-list').innerHTML = h || '<div class="empty">該当する見出しがありません</div>';
+  document.querySelectorAll('#pk-list [data-pk-head]').forEach(hc => {
+    const gr = groups.find(x => x.key === hc.dataset.pkHead);
+    const selectable = gr.items.filter(c => !own.has(norm(c.body)));
+    const n = selectable.filter(c => PICK.sel.has(c.id)).length;
+    hc.indeterminate = n > 0 && n < selectable.length;
+  });
+  $('pk-add').textContent = PICK.sel.size ? 'チェックした ' + PICK.sel.size + '件を追加する' : '追加する';
+}
+$('pk-cat').addEventListener('change', renderPick);
+$('pk-keyword').addEventListener('input', debounce(renderPick, 200));
+$('pk-list').addEventListener('click', (e) => {
+  if (e.target.closest('input, label')) return; // チェックの操作は change で扱う
+  const tg = e.target.closest('[data-pk-toggle]'); if (!tg) return;
+  const key = tg.dataset.pkToggle;
+  if (PICK.open.has(key)) PICK.open.delete(key); else PICK.open.add(key);
+  renderPick();
+});
+$('pk-list').addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.dataset.pkId) { if (t.checked) PICK.sel.add(+t.dataset.pkId); else PICK.sel.delete(+t.dataset.pkId); }
+  if (t.dataset.pkHead) {
+    const gr = pickGroups(PICK.g).find(x => x.key === t.dataset.pkHead);
+    const own = new Set(clauses.filter(c => !c.archived && matchesBuildingGroup(c.buildings, PICK.g)).map(c => norm(c.body)));
+    gr.items.filter(c => !own.has(norm(c.body))).forEach(c => { if (t.checked) PICK.sel.add(c.id); else PICK.sel.delete(c.id); });
+    PICK.open.add(gr.key);
+  }
+  renderPick();
+});
+$('pk-add').addEventListener('click', async () => {
+  const g = PICK.g;
+  if (!PICK.sel.size) { toast('追加する条文にチェックを入れてください', true); return; }
+  const heading = $('pk-heading').value.trim() || g.name;
+  // 選んだ順ではなく、一覧に並んでいる順で追加する
+  const picked = pickGroups(g).flatMap(gr => gr.items).filter(c => PICK.sel.has(c.id));
+  const own = clauses.filter(c => !c.archived && matchesBuildingGroup(c.buildings, g));
+  let order = own.length ? Math.max(...own.map(c => c.sort_order)) : Math.max(0, ...clauses.map(c => c.sort_order)) + 10;
+  const rows = picked.map(c => ({
+    category: c.category === '駐車場特約' ? '駐車場特約' : '物件別追加特約',
+    heading, body: c.body, buildings: [g.name], sub_tags: c.sub_tags || [], attributes: [], guarantors: [],
+    memo: c.memo || null, sort_order: ++order, source: '「' + (c.heading || '') + '」から複製'
+  }));
+  const r = await sb.from('tokuyaku_clauses').insert(rows);
+  if (r.error) { toast('追加に失敗しました：' + r.error.message, true); return; }
+  $('dlg-pick').close();
+  toast('「' + g.name + '」に ' + rows.length + '件追加しました（見出し：' + heading + '）');
+  await loadAll();
+});
+
+// 管理終了にする（date）／管理を再開する（null）。記録はすべて残す。
+async function setEnded(g, date){
+  if (date && !confirm('「' + g.name + '」を ' + date.replace(/-/g, '/') + ' で管理終了にします。\n特約・作成した特約事項・基本情報はそのまま残り、管理物件一覧の「管理終了」から検索できます。よろしいですか？')) return;
+  if (!date && !confirm('「' + g.name + '」の管理を再開しますか？')) return;
+  const payload = { ended_at: date, updated_at: nowIso() };
+  const r = g.meta ? await sb.from('tokuyaku_buildings').update(payload).eq('id', g.meta.id)
+                   : await sb.from('tokuyaku_buildings').insert({ name: g.name, ...payload });
+  if (r.error) { toast('保存に失敗しました：' + r.error.message, true); return; }
+  if (date && Q.building && Q.building.name === g.name) { $('q-building').value = ''; Q.building = null; }
+  toast(date ? '「' + g.name + '」を管理終了にしました' : '「' + g.name + '」の管理を再開しました');
+  await loadAll();
+}
+
+// 建物を完全に削除する。この建物だけの特約は削除済み（元に戻せる）にし、共用の特約からは建物名だけを外す。
+async function deleteBuilding(g){
+  const own = clauses.filter(c => !c.archived && matchesBuildingGroup(c.buildings, g));
+  const onlyThis = own.filter(c => c.buildings.every(b => g.keys.has(norm(b))));
+  const shared = own.filter(c => !onlyThis.includes(c));
+  const td = docsOf(g);
+  const msg = '「' + g.name + '」を削除します。\n\n' +
+    '・この建物の特約 ' + onlyThis.length + '件 → 削除済みに移動（元に戻せます）\n' +
+    (shared.length ? '・他の建物と共用の特約 ' + shared.length + '件 → この建物名だけ外します\n' : '') +
+    '・作成した特約事項 ' + td.length + '件、基本情報 → 削除（元に戻せません）\n\n' +
+    '削除する場合は、確認のため建物名を入力してください。';
+  const typed = prompt(msg, '');
+  if (typed === null) return;
+  if (norm(typed) !== norm(g.name)) { toast('建物名が一致しないため、削除しませんでした', true); return; }
+  const now = nowIso();
+  const fail = (r, what) => { if (r.error) { toast(what + 'に失敗しました：' + r.error.message, true); return true; } return false; };
+  if (onlyThis.length && fail(await sb.from('tokuyaku_clauses').update({ archived: true, updated_at: now }).in('id', onlyThis.map(c => c.id)), '特約の削除')) return;
+  for (const c of shared) {
+    if (fail(await sb.from('tokuyaku_clauses').update({ buildings: c.buildings.filter(b => !g.keys.has(norm(b))), updated_at: now }).eq('id', c.id), '共用の特約の更新')) return;
+  }
+  if (td.length && fail(await sb.from('tokuyaku_documents').delete().in('id', td.map(d => d.id)), '作成した特約事項の削除')) return;
+  if (g.meta && fail(await sb.from('tokuyaku_buildings').delete().eq('id', g.meta.id), '基本情報の削除')) return;
+  toast('「' + g.name + '」を削除しました');
+  if (Q.building && Q.building.name === g.name) { $('q-building').value = ''; Q.building = null; }
+  BSEL = null;
+  await loadAll();
+  closeBuilding();
+}
+
+async function renameBuilding(g, to){
+  if (!to) { toast('新しい建物名を入力してください', true); return; }
+  const target = clauses.filter(c => matchesBuildingGroup(c.buildings, g));
+  const td = docsOf(g);
+  if (!confirm('「' + Array.from(g.names).join('／') + '」を「' + to + '」に書き換えます。\n特約 ' + target.length + '件、作成した特約事項 ' + td.length + '件が対象です。よろしいですか？')) return;
+  const now = nowIso();
+  for (const c of target) {
+    const nb = uniq(c.buildings.map(b => g.keys.has(norm(b)) ? to : b));
+    const r = await sb.from('tokuyaku_clauses').update({ buildings: nb, updated_at: now }).eq('id', c.id);
+    if (r.error) { toast('書き換えに失敗しました：' + r.error.message, true); return; }
+  }
+  if (td.length) { const r = await sb.from('tokuyaku_documents').update({ building: to, updated_at: now }).in('id', td.map(d => d.id)); if (r.error) { toast('作成した特約事項の書き換えに失敗しました：' + r.error.message, true); return; } }
+  const existing = bmeta.find(m => (!g.meta || m.id !== g.meta.id) && norm(m.name) === norm(to));
+  const aliases = uniq([...((g.meta && g.meta.aliases) || []), ...Array.from(g.names).filter(n => norm(n) !== norm(to))]);
+  if (existing) {
+    await sb.from('tokuyaku_buildings').update({ aliases: uniq([...(existing.aliases || []), ...aliases]), updated_at: now }).eq('id', existing.id);
+    if (g.meta) await sb.from('tokuyaku_buildings').delete().eq('id', g.meta.id);
+  } else if (g.meta) {
+    await sb.from('tokuyaku_buildings').update({ name: to, aliases, updated_at: now }).eq('id', g.meta.id);
+  } else {
+    await sb.from('tokuyaku_buildings').insert({ name: to, aliases });
+  }
+  toast('建物名を書き換えました');
+  BSEL = to; await loadAll();
+}
+
+// ================= 一覧・編集 =================
+let LIST_GROUPS = []; // 一覧で見出しごとに表示している条文IDの並び（ドラッグ並び替え用）
+
+// 見出しの中を newIds の順に並べ替える。見出し内で使っている並び順の値を付け替えるので、他の見出しとの前後は変わらない。
+async function reorderClauses(oldIds, newIds){
+  if (oldIds.join() === newIds.join()) return;
+  const values = oldIds.map(id => clauses.find(c => c.id === id).sort_order).sort((a, b) => a - b);
+  const vals = new Set(values).size === values.length ? values : values.map((_, i) => values[0] + i);
+  const order = newIds.map(id => clauses.find(c => c.id === id));
+  const changes = order.map((c, i) => ({ c, v: vals[i] })).filter(x => x.c.sort_order !== x.v);
+  changes.forEach(x => { x.c.sort_order = x.v; });
+  renderList();
+  const now = nowIso();
+  const results = await Promise.all(changes.map(x => sb.from('tokuyaku_clauses').update({ sort_order: x.v, updated_at: now }).eq('id', x.c.id)));
+  const err = results.find(r => r.error);
+  if (err) { toast('並び替えの保存に失敗しました：' + err.error.message, true); await loadAll(); return; }
+  renderSearch(); renderBuildings();
+}
+
+function renderList(){
+  const cat = $('l-category').value, kw = norm($('l-keyword').value), showOld = $('l-old').checked, showArc = $('l-archived').checked;
+  const today = todayStr();
+  let rows = clauses.filter(c => (!cat || c.category === cat) && (showArc || !c.archived) && (showOld || !c.effective_to || c.effective_to >= today));
+  if (kw) rows = rows.filter(c => norm(c.body + ' ' + c.heading + ' ' + (c.memo || '') + ' ' + (c.buildings || []).join(' ') + ' ' + (c.sub_tags || []).join(' ')).includes(kw)
+                                 || (c.buildings || []).some(b => { const g = findBuilding(b); return g && Array.from(g.keys).some(x => x.includes(kw)); }));
+  let h = '<div class="hint" style="margin-bottom:8px;">' + rows.length + '件　行をクリックすると編集できます。左の「⠿」をつかんで上下にドラッグすると、同じ見出しの中で順番を入れ替えられます（コピー時の番号もこの順になります）。</div>';
+  LIST_GROUPS = [];
+  CATEGORIES.forEach(catName => {
+    const cr = rows.filter(c => c.category === catName).sort(bySort);
+    if (!cr.length) return;
+    h += '<h2 class="list-group-title">' + esc(catName) + '<span class="chip">' + cr.length + '件</span>' + (CAT_DESC[catName] ? '<span class="hint">' + esc(CAT_DESC[catName]) + '</span>' : '') + '</h2>';
+    let heads = uniq(cr.map(c => c.heading));
+    if (catName === '物件別追加特約') {
+      // 「建物」タブと同じ建物名の順に並べる（同じ建物の見出し同士は並び順のまま）
+      const bpos = head => { const c = cr.find(x => x.heading === head); const g = c && c.buildings && c.buildings.length ? findBuilding(c.buildings[0]) : null; return g ? BIDX.indexOf(g) : Infinity; };
+      heads = heads.map((head, i) => ({ head, i, p: bpos(head) })).sort((a, b) => (a.p - b.p) || (a.i - b.i)).map(x => x.head);
+    }
+    // 見出しの並び替え：物件別は建物名の順で自動に並ぶので対象外
+    const headDrag = catName !== '物件別追加特約' && heads.length > 1;
+    h += '<div class="cat-heads">';
+    heads.forEach((head, hi) => {
+      const hr = cr.filter(c => c.heading === head);
+      const gi = LIST_GROUPS.push(hr.map(c => c.id)) - 1;
+      const cur = hr.filter(c => !c.archived && (!c.effective_to || c.effective_to >= today));
+      const first = hr[0];
+      h += '<div class="head-block" data-id="' + gi + '"><div class="list-head-title">' +
+        (headDrag ? '<span class="handle" data-hhandle title="つかんで上下にドラッグすると、見出しの順番を入れ替えられます">⠿</span><span class="pos hpos">' + (hi + 1) + '</span>' : '') +
+        esc(head || '(見出しなし)') +
+        (first.buildings && first.buildings.length ? uniq(hr.flatMap(c => c.buildings)).map(b => '<button class="b-name" data-bname="' + esc(b) + '">' + esc(b) + '</button>' + (isEnded(findBuilding(b)) ? '<span class="chip old">管理終了</span>' : '')).join(' ') : '') +
+        (first.version_label ? '<span class="chip">' + esc(first.version_label) + '</span>' : '') +
+        (first.effective_to && first.effective_to < today ? '<span class="chip old">旧版（〜' + esc(first.effective_to) + '）</span>' : '') +
+        '<button class="linkbtn" data-act="add-to" data-head="' + esc(head) + '" data-cat="' + esc(catName) + '">＋この見出しに追加</button>' +
+        '<button class="linkbtn" data-act="rename-head" data-head="' + esc(head) + '" data-cat="' + esc(catName) + '">見出しを変更</button>' +
+        (catName === '基本特約' && cur.length ? '<button class="linkbtn" data-act="revise" data-head="' + esc(head) + '">この版を改定する</button>' : '') +
+        '</div>';
+      h += '<div class="scroll-x"><table class="list"><tr><th style="width:92px">並び順</th><th>本文</th><th style="width:22%">タグ</th><th style="width:130px">適用期間</th></tr>';
+      hr.forEach((c, pos) => {
+        const tags = [].concat(
+          c.variant ? ['<span class="chip swap">' + esc(c.variant) + 'のとき</span>'] : [],
+          (c.sub_tags || []).map(t => '<span class="chip">' + esc(t) + '</span>'),
+          (c.attributes || []).map(t => '<span class="chip cat">' + esc(t) + '</span>'),
+          P.hasPlaceholder(c.body) ? ['<span class="chip edit">要編集</span>'] : [],
+          c.archived ? ['<span class="chip old">削除済み</span>'] : []).join(' ');
+        h += '<tr class="' + (c.archived ? 'archived' : '') + '" data-id="' + c.id + '" style="cursor:pointer"><td class="nowrap">' +
+          (hr.length > 1 ? '<span class="handle" data-handle data-g="' + gi + '" title="つかんで上下にドラッグすると並び替えできます">⠿</span>' : '<span class="handle off">⠿</span>') +
+          '<span class="pos">' + (pos + 1) + '</span></td><td style="white-space:pre-wrap">' + markPh(c.body) +
+          (c.memo ? '<div class="hint">メモ：' + esc(c.memo) + '</div>' : '') + '</td><td>' + tags + '</td><td class="nowrap">' +
+          esc(c.effective_from || '（最初から）') + '<br>〜 ' + esc(c.effective_to || '現在') + '</td></tr>';
+      });
+      h += '</table></div></div>';
+    });
+    h += '</div>';
+    if (catName === '物件別追加特約' && heads.length > 1) h += '<div class="hint">物件別追加特約の見出しは、管理物件の建物名の順に自動で並びます。</div>';
+  });
+  if (!rows.length) h += '<div class="empty">該当する特約はありません</div>';
+  $('list-body').innerHTML = h;
+}
+
+// ---- ドラッグで並び替え（マウス・タッチ共通。⠿ をつかんで上下に動かす） ----
+// つかんだ行は番号ごと指（マウス）に付いて動き、離した位置の番号になる。並び替えは同じ親要素の中だけ。
+// container: イベントを受ける要素 / rowSel: 行のセレクタ / handleSel: つまみのセレクタ / getScroller: 自動スクロールする要素（null ならページ）
+// onDrop(handle, newIds): 順番が変わったときに呼ばれる
+function makeSortable(container, rowSel, handleSel, getScroller, onDrop){
+  let D = null;
+  const rowsOf = parent => Array.from(parent.children).filter(el => el.matches(rowSel));
+  container.addEventListener('pointerdown', (e) => {
+    const hd = e.target.closest(handleSel); if (!hd || !container.contains(hd)) return;
+    e.preventDefault();
+    const row = hd.closest(rowSel), pos = row.querySelector('.pos');
+    const before = rowsOf(row.parentElement).map(r => +r.dataset.id);
+    D = { hd, row, parent: row.parentElement, before, lastY: e.clientY, grab: e.clientY - row.getBoundingClientRect().top, from: +pos.textContent, timer: null };
+    row.classList.add('dragging'); document.body.classList.add('is-dragging');
+    pos.insertAdjacentHTML('afterend', '<span class="pos-to"></span>');
+    try { hd.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  function moveTo(y){
+    const row = D.row;
+    const others = rowsOf(D.parent).filter(r => r !== row);
+    row.style.transform = '';
+    const center = y - D.grab + row.getBoundingClientRect().height / 2;
+    const target = others.filter(r => { const b = r.getBoundingClientRect(); return b.top + b.height / 2 < center; }).length;
+    if (target !== rowsOf(D.parent).indexOf(row)) { if (target < others.length) others[target].before(row); else others[others.length - 1].after(row); }
+    row.style.transform = 'translateY(' + (y - D.grab - row.getBoundingClientRect().top) + 'px)';
+    // 他の行は新しい順番で番号を振り直す。つかんだ行は元の番号のまま、移動先を「→N」で出す
+    const all = rowsOf(D.parent);
+    all.forEach((r, i) => { if (r !== row) { const p = r.querySelector('.pos'); if (p) p.textContent = i + 1; } });
+    const to = all.indexOf(row) + 1;
+    row.querySelector('.pos-to').textContent = to !== D.from ? '→' + to : '';
+  }
+  container.addEventListener('pointermove', (e) => {
+    if (!D) return;
+    D.lastY = e.clientY;
+    moveTo(e.clientY);
+    // 端に近づいたら自動でスクロール
+    clearInterval(D.timer);
+    const sc = getScroller && getScroller();
+    const top = sc ? sc.getBoundingClientRect().top : 0, bottom = sc ? sc.getBoundingClientRect().bottom : innerHeight;
+    const edge = 50, dy = e.clientY < top + edge ? -12 : (e.clientY > bottom - edge ? 12 : 0);
+    if (dy) D.timer = setInterval(() => { (sc || window).scrollBy(0, dy); if (D) moveTo(D.lastY); }, 16);
+  });
+  function end(){
+    if (!D) return;
+    const d = D; D = null;
+    clearInterval(d.timer);
+    d.row.classList.remove('dragging'); document.body.classList.remove('is-dragging');
+    d.row.style.transform = '';
+    const pt = d.row.querySelector('.pos-to'); if (pt) pt.remove();
+    const rows = rowsOf(d.parent);
+    rows.forEach((r, i) => { const p = r.querySelector('.pos'); if (p) p.textContent = i + 1; });
+    const newIds = rows.map(r => +r.dataset.id);
+    if (newIds.join() !== d.before.join()) {
+      // 離した位置の番号に確定したことが分かるよう、少しだけ色を付ける
+      d.row.classList.add('dropped'); setTimeout(() => d.row.classList.remove('dropped'), 900);
+      onDrop(d.hd, newIds, d.before);
+    }
+  }
+  container.addEventListener('pointerup', end);
+  container.addEventListener('pointercancel', end);
+}
+
+// 一覧・編集：同じ見出しの中で並び替えて保存する
+// 管理物件：この建物の特約を並び替えて保存する
+makeSortable($('b-detail-view'), 'tr[data-id]', '[data-bhandle]', null, (hd, newIds, oldIds) => {
+  setTimeout(() => reorderClauses(oldIds, newIds), 350);
+});
+// 一覧・編集：見出しの順番を入れ替える（見出しごとの条文をまとめて動かす。見出しの中の順番はそのまま）
+makeSortable($('list-body'), '.head-block', '[data-hhandle]', null, (hd, newGis, oldGis) => {
+  const oldIds = oldGis.flatMap(gi => LIST_GROUPS[gi]);
+  const newIds = newGis.flatMap(gi => LIST_GROUPS[gi]);
+  setTimeout(() => { reorderClauses(oldIds, newIds).then(() => refreshMasters()); }, 350);
+});
+makeSortable($('list-body'), 'tr[data-id]', '[data-handle]', null, (hd, newIds) => {
+  const gi = +hd.dataset.g;
+  setTimeout(() => reorderClauses(LIST_GROUPS[gi], newIds), 350);
+});
+
+['l-category','l-old','l-archived'].forEach(id => $(id).addEventListener('change', renderList));
+$('l-keyword').addEventListener('input', debounce(renderList, 200));
+$('list-body').addEventListener('click', (e) => {
+  if (e.target.closest('.handle')) return; // ドラッグ用のつまみはクリックしても編集を開かない
+  const bn = e.target.closest('.b-name'); if (bn) { openBuilding(bn.dataset.bname); return; }
+  const a = e.target.closest('[data-act]');
+  if (a && a.dataset.act === 'add-to') {
+    const same = clauses.filter(c => c.heading === a.dataset.head && c.category === a.dataset.cat);
+    const base = same[same.length - 1] || {};
+    openClause(null, { category: a.dataset.cat, heading: a.dataset.head, buildings: base.buildings, sub_tags: base.sub_tags, attributes: base.attributes,
+      effective_from: base.effective_from, effective_to: base.effective_to, version_label: base.version_label,
+      sort_order: Math.max(0, ...same.map(c => c.sort_order)) + 1 });
+    return;
+  }
+  if (a && a.dataset.act === 'revise') { openRevise(a.dataset.head); return; }
+  if (a && a.dataset.act === 'rename-head') { openHeadingRename(a.dataset.cat, a.dataset.head); return; }
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) openClause(clauses.find(c => c.id === +tr.dataset.id));
+});
+$('l-new').addEventListener('click', () => openClause(null, { category: $('l-category').value || '物件別追加特約', sort_order: Math.max(0, ...clauses.map(c => c.sort_order)) + 10 }));
+
+let editing = null, editingPreset = null;
+function openClause(c, preset){
+  editing = c; editingPreset = preset || {};
+  const v = c || editingPreset;
+  $('e-title').textContent = c ? '特約の編集' : '特約の新規登録';
+  $('e-category').value = v.category || '物件別追加特約';
+  $('e-heading').value = v.heading || '';
+  $('e-body').value = v.body || '';
+  $('e-buildings').value = (v.buildings || []).join('、');
+  $('e-subtags').value = (v.sub_tags || []).join('、');
+  $('e-variant').value = v.variant || '';
+  $('e-from').value = v.effective_from || '';
+  $('e-to').value = v.effective_to || '';
+  $('e-version').value = v.version_label || '';
+  $('e-sort').value = v.sort_order != null ? v.sort_order : 0;
+  $('e-memo').value = v.memo || '';
+  $('e-archive').hidden = !c;
+  $('e-archive').textContent = c && c.archived ? '元に戻す' : '削除';
+  $('dlg-clause').showModal();
+}
+$('e-save').addEventListener('click', async () => {
+  // 先頭に番号が付いていたら外す（コピー時に振り直すため）
+  const rawBody = $('e-body').value.trim();
+  const body = P.stripNumber(rawBody) ?? rawBody;
+  if (!body) { toast('本文を入力してください', true); return; }
+  const category = $('e-category').value, heading = $('e-heading').value.trim();
+  if ((category === '属性別特約' || category === 'その他の特約') && !heading) { toast('見出し（チェック項目の名前）を入力してください', true); return; }
+  const payload = {
+    category, heading, body,
+    buildings: splitList($('e-buildings').value), sub_tags: splitList($('e-subtags').value),
+    variant: $('e-variant').value || null,
+    effective_from: $('e-from').value || null, effective_to: $('e-to').value || null,
+    version_label: $('e-version').value.trim() || null, sort_order: parseInt($('e-sort').value, 10) || 0,
+    memo: $('e-memo').value.trim() || null, updated_at: nowIso()
+  };
+  if (payload.effective_from && payload.effective_to && payload.effective_from > payload.effective_to) { toast('適用終了日が開始日より前になっています', true); return; }
+  const r = editing ? await sb.from('tokuyaku_clauses').update(payload).eq('id', editing.id)
+                    : await sb.from('tokuyaku_clauses').insert({ ...payload, attributes: editingPreset.attributes || [], source: '手入力' });
+  if (r.error) { toast('保存に失敗しました：' + r.error.message, true); return; }
+  $('dlg-clause').close(); toast('保存しました'); await loadAll();
+});
+$('e-archive').addEventListener('click', async () => {
+  if (!editing) return;
+  const to = !editing.archived;
+  if (to && !confirm('この特約を削除しますか？（「一覧・編集」の「削除済みも表示」から元に戻せます）')) return;
+  const r = await sb.from('tokuyaku_clauses').update({ archived: to, updated_at: nowIso() }).eq('id', editing.id);
+  if (r.error) { toast('失敗しました：' + r.error.message, true); return; }
+  $('dlg-clause').close(); toast(to ? '削除しました' : '元に戻しました'); await loadAll();
+});
+
+// ---- 見出しの変更（属性・その他はチェック項目の名前になる） ----
+let renamingHead = null;
+function openHeadingRename(cat, head){
+  const label = head || '(見出しなし)';
+  const n = clauses.filter(c => c.category === cat && (c.heading || '(見出しなし)') === label).length;
+  renamingHead = { cat, head: label };
+  $('h-info').textContent = cat + '「' + label + '」（条文 ' + n + '件）の見出しを変更します。';
+  $('h-name').value = label === '(見出しなし)' ? '' : label;
+  $('dlg-heading').showModal(); $('h-name').focus(); $('h-name').select();
+}
+$('h-save').addEventListener('click', async () => {
+  const { cat, head } = renamingHead, to = $('h-name').value.trim();
+  if (!to) { toast('新しい見出しを入力してください', true); return; }
+  if (to === head) { $('dlg-heading').close(); return; }
+  const targets = clauses.filter(c => c.category === cat && (c.heading || '(見出しなし)') === head);
+  const now = nowIso();
+  const r = await sb.from('tokuyaku_clauses').update({ heading: to, updated_at: now }).in('id', targets.map(c => c.id));
+  if (r.error) { toast('変更に失敗しました：' + r.error.message, true); return; }
+  // 保存済みの特約事項の条件（属性・その他のチェック）も新しい見出しにする
+  const key = cat === '属性別特約' ? 'attrs' : (cat === 'その他の特約' ? 'others' : null);
+  if (key) {
+    for (const d of docs.filter(d => ((d.conditions || {})[key] || []).includes(head))) {
+      const cond = { ...d.conditions, [key]: uniq(d.conditions[key].map(x => x === head ? to : x)) };
+      await sb.from('tokuyaku_documents').update({ conditions: cond }).eq('id', d.id);
+    }
+  }
+  // 特約事項作成でチェックしていたら、新しい見出しでもチェックしたままにする
+  const boxId = key === 'attrs' ? 'q-attrs' : (key === 'others' ? 'q-others' : null);
+  const wasChecked = boxId && Array.from(document.querySelectorAll('#' + boxId + ' input:checked')).some(i => i.value === head);
+  $('dlg-heading').close();
+  await loadAll();
+  if (wasChecked) { document.querySelectorAll('#' + boxId + ' input').forEach(i => { if (i.value === to) i.checked = true; }); renderSearch(); }
+  toast('見出しを「' + to + '」に変更しました');
+});
+
+// ---- 基本特約の版の改定 ----
+let revising = null;
+function openRevise(head){
+  const today = todayStr();
+  const cur = clauses.filter(c => c.category === '基本特約' && c.heading === head && !c.archived && (!c.effective_to || c.effective_to >= today));
+  revising = { head, cur };
+  $('v-info').textContent = '「' + head + '」（' + ((cur[0] && cur[0].version_label) || '版名なし') + '、' + cur.length + '条）をもとに新しい版を作ります。';
+  $('v-label').value = ''; $('v-from').value = '';
+  $('dlg-version').showModal();
+}
+$('v-do').addEventListener('click', async () => {
+  const label = $('v-label').value.trim(), from = $('v-from').value;
+  if (!label || !from) { toast('版の名前と適用開始日を入力してください', true); return; }
+  if (revising.cur.some(c => c.effective_from && c.effective_from >= from)) { toast('適用開始日は今の版の開始日より後にしてください', true); return; }
+  const base = revising.head.replace(/【[^】]*】\s*$/, '').trim();
+  const newHead = base + '【' + label.replace(/版$/, '') + '】';
+  const rows = revising.cur.map(c => ({ category: c.category, heading: newHead, body: c.body, buildings: c.buildings, sub_tags: c.sub_tags, attributes: c.attributes,
+    guarantors: c.guarantors, variant: c.variant, effective_from: from, effective_to: null, version_label: label, memo: c.memo, sort_order: c.sort_order, source: '版改定（' + revising.head + 'より複製）' }));
+  const ins = await sb.from('tokuyaku_clauses').insert(rows);
+  if (ins.error) { toast('作成に失敗しました：' + ins.error.message, true); return; }
+  const upd = await sb.from('tokuyaku_clauses').update({ effective_to: dayBefore(from), updated_at: nowIso() }).in('id', revising.cur.map(c => c.id));
+  if (upd.error) { toast('旧版の終了日の設定に失敗しました：' + upd.error.message, true); }
+  $('dlg-version').close(); toast('新しい版「' + label + '」を作成しました。内容を編集してください。');
+  await loadAll();
+  $('l-category').value = '基本特約'; $('l-keyword').value = ''; renderList();
+});
+
+// ================= テキスト取り込み =================
+let IMP = null;
+$('i-file').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const buf = await f.arrayBuffer();
+  let text = new TextDecoder('utf-8').decode(buf);
+  if (text.includes('�')) { try { text = new TextDecoder('shift_jis').decode(buf); } catch (err) {} }
+  $('i-text').value = text;
+});
+$('i-parse').addEventListener('click', () => {
+  const text = $('i-text').value;
+  if (!text.trim()) { toast('テキストを貼り付けるか、ファイルを選んでください', true); return; }
+  const r = P.parse(text);
+  // 「同じ見出し＋同じ本文」または「同じカテゴリ・建物＋同じ本文」がすでにあれば登録済みとみなす
+  const keyA = (heading, body) => norm(heading) + '|' + norm(body);
+  const keyB = (cat, blds, body) => cat + '|' + (blds || []).map(norm).sort().join(',') + '|' + norm(body);
+  const live = clauses.filter(c => !c.archived);
+  const existing = new Set([...live.map(c => keyA(c.heading, c.body)), ...live.map(c => keyB(c.category, c.buildings, c.body))]);
+  IMP = {
+    warnings: r.warnings,
+    blocks: r.blocks.map(b => ({ ...b, on: true, clauses: b.clauses.map(c => {
+      const dup = existing.has(keyA(b.heading, c.body)) || existing.has(keyB(b.category, b.buildings, c.body));
+      return { ...c, on: !dup, dup };
+    }) }))
+  };
+  renderImport();
+});
+function renderImport(){
+  if (!IMP) { $('import-body').innerHTML = ''; $('i-save').hidden = true; return; }
+  const nC = IMP.blocks.reduce((s, b) => s + (b.on ? b.clauses.filter(c => c.on).length : 0), 0);
+  let h = '<div class="note-box">見出し ' + IMP.blocks.length + '件・条文 ' + IMP.blocks.reduce((s, b) => s + b.clauses.length, 0) + '件を読み取りました。登録予定：条文 ' + nC + '件</div>';
+  IMP.warnings.forEach(w => { h += '<div class="warn-box">' + esc(w) + '</div>'; });
+  IMP.blocks.forEach((b, bi) => {
+    h += '<div class="imp-block' + (b.on ? '' : ' off') + '" data-bi="' + bi + '">';
+    h += '<div class="imp-head"><input type="checkbox" data-f="on"' + (b.on ? ' checked' : '') + ' title="この見出しを取り込む">' +
+      '<input type="text" data-f="heading" value="' + esc(b.heading) + '" title="見出し">' +
+      '<select data-f="category">' + CATEGORIES.map(c => '<option' + (c === b.category ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div>';
+    h += '<div class="imp-tags">' +
+      '<input type="text" data-f="buildings" value="' + esc(b.buildings.join('、')) + '" placeholder="対象建物" title="対象建物" list="dl-buildings">' +
+      '<input type="text" data-f="subTags" value="' + esc(b.subTags.join('、')) + '" placeholder="サブタグ" title="サブタグ">' +
+      '<input type="text" data-f="attributes" value="' + esc(b.attributes.join('、')) + '" placeholder="対象属性" title="対象属性">' +
+      '<input type="text" data-f="guarantors" value="' + esc(b.guarantors.join('、')) + '" placeholder="保証会社" title="保証会社">' +
+      '<input type="date" data-f="effectiveFrom" value="' + esc(b.effectiveFrom || '') + '" title="適用開始日"></div>';
+    h += '<div class="imp-src">元ファイル ' + b.lineNo + '行目「' + esc(b.title) + '」' + (b.parentTitle ? '（' + esc(b.parentTitle) + ' の中）' : '') + '</div>';
+    if (b.memo) h += '<div class="field-row" style="margin:6px 0 0"><input type="text" data-f="memo" value="' + esc(b.memo) + '" style="width:100%" title="メモ"></div>';
+    b.clauses.forEach((c, ci) => {
+      h += '<div class="imp-clause' + (c.dup ? ' dup' : '') + '" data-ci="' + ci + '"><input type="checkbox" data-cf="on"' + (c.on ? ' checked' : '') + '>' +
+        '<div><textarea data-cf="body">' + esc(c.body) + '</textarea>' + (c.dup ? '<span class="chip">登録済み</span> ' : '') + (P.hasPlaceholder(c.body) ? '<span class="chip edit">要編集</span>' : '') + '</div>' +
+        (ci > 0 ? '<button class="linkbtn" data-cact="merge" title="1つ上の条文とつなげる">上と結合</button>' : '<span></span>') + '</div>';
+    });
+    h += '</div>';
+  });
+  $('import-body').innerHTML = h;
+  $('i-save').hidden = false;
+}
+$('import-body').addEventListener('change', (e) => {
+  const t = e.target;
+  const bEl = t.closest('[data-bi]');
+  if (!bEl) return;
+  const b = IMP.blocks[+bEl.dataset.bi];
+  if (t.dataset.f) {
+    const f = t.dataset.f;
+    if (f === 'on') { b.on = t.checked; bEl.classList.toggle('off', !t.checked); }
+    else if (['buildings','subTags','attributes','guarantors'].includes(f)) b[f] = splitList(t.value);
+    else b[f] = t.value;
+  }
+  if (t.dataset.cf) {
+    const c = b.clauses[+t.closest('[data-ci]').dataset.ci];
+    if (t.dataset.cf === 'on') c.on = t.checked; else c.body = t.value;
+  }
+});
+$('import-body').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-cact=merge]'); if (!t) return;
+  const b = IMP.blocks[+t.closest('[data-bi]').dataset.bi], ci = +t.closest('[data-ci]').dataset.ci;
+  b.clauses[ci - 1].body += '\n' + b.clauses[ci].body;
+  b.clauses.splice(ci, 1);
+  renderImport();
+});
+$('i-save').addEventListener('click', async () => {
+  if (!IMP) return;
+  const rows = []; let order = Math.max(0, ...clauses.map(c => c.sort_order));
+  IMP.blocks.filter(b => b.on).forEach(b => {
+    b.clauses.filter(c => c.on && c.body.trim()).forEach((c, i) => {
+      order += 10;
+      rows.push({ category: b.category, heading: b.heading.trim(), body: c.body.trim(), buildings: b.buildings, sub_tags: b.subTags, attributes: b.attributes,
+        guarantors: b.guarantors, effective_from: b.effectiveFrom || null, version_label: b.category === '基本特約' ? (b.versionLabel || null) : null,
+        memo: i === 0 && b.memo ? b.memo : null, sort_order: order, source: 'テキスト取り込み ' + b.lineNo + '行目' });
+    });
+  });
+  if (!rows.length) { toast('登録するものが選ばれていません', true); return; }
+  if (!confirm('条文 ' + rows.length + '件を登録します。よろしいですか？')) return;
+  const r = await sb.from('tokuyaku_clauses').insert(rows);
+  if (r.error) { toast('登録に失敗しました：' + r.error.message, true); return; }
+  toast('登録しました（条文 ' + rows.length + '件）');
+  IMP = null; $('i-text').value = ''; $('i-file').value = ''; renderImport();
+  await loadAll();
+});
+
+loadAll();
+</script>
+</body>
+</html>
