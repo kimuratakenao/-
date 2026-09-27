@@ -560,7 +560,7 @@ const INSPECTION_FIELDS = {
   cylinder_stock:{ label:'シリンダー在庫', type:'select', options:['○','×'] },
   power_off_display:{ label:'⑦通電停止日（前入居者）', type:'computed' },
   power_stop_done:{ label:'電気停止手続', type:'bool' },
-  application_notes_display:{ label:'申込時情報', type:'computed' },
+  application_notes_display:{ label:'申込時情報', type:'computed', full:true },
   notes:{ label:'備考', type:'textarea' },
 };
 
@@ -973,7 +973,7 @@ function renderField(key, f, val){
     return '<div class="field full"><label>' + esc(f.label) + '</label><textarea data-key="' + key + '">' + esc(val || '') + '</textarea></div>';
   }
   if (f.type === 'computed'){
-    return '<div class="field"><label>' + esc(f.label) + '</label><div class="field-computed" data-computed="' + key + '">—</div></div>';
+    return '<div class="field' + (f.full ? ' full' : '') + '"><label>' + esc(f.label) + '</label><div class="field-computed" data-computed="' + key + '">—</div></div>';
   }
   const req = f.required ? ' <span class="req">*</span>' : '';
   const listAttr = f.suggest ? ' list="dl-' + f.suggest + '"' : '';
@@ -1366,7 +1366,7 @@ function renderInspections(){
   document.getElementById('count-inspections').textContent = list.length + '件';
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:11%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:12%">申込時情報</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:6%">担当者</th></tr>';
+  thead.innerHTML = '<tr><th style="width:14%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:9%">申込時情報</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:6%">担当者</th></tr>';
   if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
