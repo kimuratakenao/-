@@ -306,6 +306,8 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
 .room{border:1px solid var(--navy-soft); border-radius:10px; margin-bottom:10px; overflow:hidden;}
 .room-head{display:flex; gap:12px; align-items:center; padding:10px 14px; background:var(--navy-soft); color:var(--navy-ink); cursor:pointer; flex-wrap:wrap; font-size:13px;}
 .room-head .room-name{font-size:15px;}
+.room-head .room-cdate{font-size:13px;}
+.room-head .room-cdate b{color:var(--navy-ink);}
 .room-head .spacer{flex:1;}
 .room-body{padding:10px 12px;}
 .room-body[hidden]{display:none;}
@@ -1225,6 +1227,7 @@ function renderBuildingDetail(){
     const latest = rm.docs[0], open = ROOM_OPEN.has(rm.key);
     h += '<div class="room" data-room="' + esc(rm.key) + '"><div class="room-head" data-room-toggle="' + esc(rm.key) + '">' +
       '<b class="room-name">' + (rm.key ? esc(rm.key) + '号室' : '号室未設定') + '</b>' +
+      '<span class="room-cdate" data-room-cdate>' + roomCdateHtml(latest) + '</span>' +
       '<span class="hint">最終作成 ' + esc(fmtDateTime(latest.created_at)) + '</span>' + (latest.title ? '<span>' + esc(latest.title) + '</span>' : '') +
       (rm.docs.length > 1 ? '<span class="chip">過去の版 ' + (rm.docs.length - 1) + '件</span>' : '') +
       '<span class="spacer"></span><span class="hint">' + (open ? '▲' : '▼') + '</span></div>';
@@ -1393,6 +1396,10 @@ function roomGroups(ds){
   return Array.from(map, ([key, docs]) => ({ key, docs }))
     .sort((a, b) => (!a.key) - (!b.key) || a.key.localeCompare(b.key, 'ja', { numeric: true }));
 }
+// 号室の帯に出す契約日（その号室の最新の特約事項の契約日）
+function roomCdateHtml(d){
+  return d && d.contract_date ? '契約日 <b>' + esc(d.contract_date.replace(/-/g, '/')) + '</b>' : '<span class="hint">契約日 未入力</span>';
+}
 function docHeadHtml(d, kind){
   return (kind === 'latest' ? '<span class="chip latest">最新</span>' : '<span class="chip">過去の版</span>') + '<b>' + esc(fmtDateTime(d.created_at)) + '</b>' +
     (d.title ? '<span>' + esc(d.title) + '</span>' : '') +
@@ -1447,6 +1454,9 @@ async function saveDoc(id){
   if (head) {
     const kind = box.dataset.kind;
     head.innerHTML = docHeadHtml(d, kind) + '<span class="spacer"></span><span class="doc-status" data-status></span>' + (kind === 'old' ? '<span class="hint" data-arrow>▲</span>' : '');
+    // 最新の特約事項の契約日を書き換えたら、号室の帯の契約日も変える
+    const band = kind === 'latest' && box.closest('.room') && box.closest('.room').querySelector('[data-room-cdate]');
+    if (band) band.innerHTML = roomCdateHtml(d);
   }
   const t = new Date(); docStatus(id, '保存しました ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'));
 }
