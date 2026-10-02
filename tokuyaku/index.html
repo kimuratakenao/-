@@ -191,6 +191,13 @@ dialog#dlg-pick{width:min(900px, calc(100vw - 32px));}
 .pk-clause.dup{opacity:.5;}
 .pk-foot{align-items:flex-end;}
 .pk-dest{flex:1; min-width:220px; margin-right:auto;}
+.own-start{border:1px dashed var(--navy); border-radius:10px; padding:12px; display:grid; gap:8px;}
+.own-start-title{font-weight:700; font-size:13px; color:var(--navy-ink);}
+.own-opt{display:flex; flex-direction:column; gap:2px; text-align:left; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); cursor:pointer; font-family:inherit; color:var(--ink);}
+.own-opt:hover{border-color:var(--navy); background:var(--navy-soft);}
+.own-opt b{font-size:13.5px; color:var(--navy-ink);}
+.own-opt span{font-size:12px; color:var(--ink-soft);}
+#dlg-ownbulk textarea{font-size:13px; line-height:1.7;}
 .ex-list{border:1px solid var(--border); border-radius:8px; overflow:hidden;}
 .ex-row{display:grid; grid-template-columns:22px 1fr; gap:6px; align-items:start; padding:6px 10px; border-top:1px solid var(--border); font-size:12.5px; line-height:1.55; cursor:pointer;}
 .ex-row:first-child{border-top:none;}
@@ -505,6 +512,24 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
   </div>
 </dialog>
 <datalist id="dl-bld-headings"></datalist>
+
+<dialog id="dlg-ownbulk">
+  <div class="d-head" id="ob-title">基本特約事項を文章で編集</div>
+  <div class="d-body">
+    <div class="note-box" style="margin-bottom:10px;">
+      条文を自由に書いてください（今使っている特約の文章をそのまま貼り付けても大丈夫です）。<br>
+      ・行の先頭の「1．」「２．」「・」などの番号ごとに、1つの条文として登録します（番号は登録時に外れ、コピー時に振り直されます）。<br>
+      ・番号のない行（「※出張費…」など）は、すぐ上の条文の続きになります。<br>
+      ・和室あり／なしで文面を変えたい条文は、番号のあとに【和室あり】【和室なし】と書いてください（例：<code>1．【和室なし】退室後のハウスクリーニング…</code>）。
+    </div>
+    <textarea id="ob-text" rows="16" placeholder="1．借主は…するものとする。&#10;2．…&#10;※…"></textarea>
+    <div class="hint" id="ob-count"></div>
+  </div>
+  <div class="d-foot">
+    <button class="btn secondary" data-close>キャンセル</button>
+    <button class="btn" id="ob-save">この内容で保存</button>
+  </div>
+</dialog>
 
 <dialog id="dlg-heading">
   <div class="d-head">見出しを変更</div>
@@ -967,19 +992,18 @@ $('q-basic-info').addEventListener('click', async (e) => {
   const g = Q.building; if (!g) return;
   if (e.target.closest('[data-edit-own]')) { openBuilding(g.name); scrollToOwnBasic(); return; }
   if (!e.target.closest('[data-create-own]')) return;
-  if (!confirm('「' + g.name + '」専用の基本特約事項を作ります。\n共通の基本特約事項をコピーして作成し、管理物件のページで内容を直せるようにします。よろしいですか？')) return;
-  // この建物は今後も専用を使う設定にしておく
+  // この建物は今後も専用を使う設定にして、作り方を選べる管理物件のページを開く
   if (!isOwnBasic(g)) {
     const r = g.meta ? await sb.from('tokuyaku_buildings').update({ basic_mode: 'own', updated_at: nowIso() }).eq('id', g.meta.id)
                      : await sb.from('tokuyaku_buildings').insert({ name: g.name, basic_mode: 'own' });
     if (r.error) { toast('保存に失敗しました：' + r.error.message, true); return; }
     await loadAll();
   }
-  await copyCommonBasic(findBuilding(g.name));
   openBuilding(g.name); scrollToOwnBasic();
+  toast('作り方を選んでください（文章で書く・共通を読み込む・1条ずつ追加）');
 });
 function scrollToOwnBasic(){
-  const sec = Array.from(document.querySelectorAll('#b-detail-view .b-sec')).find(s => /基本特約/.test(s.querySelector('h3') ? s.querySelector('h3').textContent : '') && !s.classList.contains('b-info'));
+  const sec = $('own-basic-sec');
   if (sec) sec.scrollIntoView({ block: 'start' });
 }
 $('q-reset').addEventListener('click', () => { resetQuery(); renderSearch(); });
@@ -1212,11 +1236,16 @@ function renderBuildingDetail(){
   const today = todayStr();
   if (isOwnBasic(g)) {
     const own = ownBasicOf(g);
-    h += '<div class="b-sec"><h3>基本特約事項（この建物専用）<span class="chip">' + own.length + '件</span><span class="spacer"></span>' +
-      '<button class="btn secondary small" id="bd-own-copy">共通の基本特約を読み込む</button><button class="btn small" id="bd-own-add">＋ 条文を追加</button></h3>' +
-      '<div class="hint" style="margin-bottom:6px;">「特約事項作成」でこの建物を選ぶと、共通の基本特約の代わりにここの条文が出ます。行をクリックで編集、「⠿」のドラッグで並べ替えできます。共通の基本特約に戻すときは、基本情報の「基本特約」を「共通」にしてください。</div>';
-    if (!own.length) h += '<div class="empty">まだ登録されていません。「共通の基本特約を読み込む」で共通の基本特約をコピーしてから直すか、「＋ 条文を追加」で1から作ってください。</div>';
-    else {
+    h += '<div class="b-sec" id="own-basic-sec"><h3>基本特約事項（この建物専用）<span class="chip">' + own.length + '件</span><span class="spacer"></span>' +
+      (own.length ? '<button class="btn small" id="bd-own-bulk">文章でまとめて編集</button><button class="btn secondary small" id="bd-own-copy">共通の基本特約を読み込む</button><button class="btn secondary small" id="bd-own-add">＋ 条文を追加</button>' : '') + '</h3>' +
+      '<div class="hint" style="margin-bottom:6px;">「特約事項作成」でこの建物を選ぶと、共通の基本特約の代わりにここの条文が出ます。行をクリックで1条ずつ編集、「⠿」のドラッグで並べ替え、「文章でまとめて編集」で全体を文章のまま書き換えられます。共通の基本特約に戻すときは、基本情報の「基本特約」を「共通」にしてください。</div>';
+    if (!own.length) {
+      // 作り方を選ぶ
+      h += '<div class="own-start"><div class="own-start-title">まだ登録されていません。作り方を選んでください。</div>' +
+        '<button class="own-opt" id="bd-own-bulk"><b>文章で書く・貼り付ける</b><span>条文を自由に書くか、今使っている特約の文章をそのまま貼り付けます。番号ごとに条文として登録します。</span></button>' +
+        '<button class="own-opt" id="bd-own-copy"><b>共通の基本特約を読み込む</b><span>共通の基本特約事項をコピーしてから、この建物に合わせて直します。</span></button>' +
+        '<button class="own-opt" id="bd-own-add"><b>1条ずつ追加する</b><span>条文を1つずつ入力して登録します。</span></button></div>';
+    } else {
       h += '<div class="scroll-x"><table class="list bld-clauses"><thead><tr><th style="width:80px">並び順</th><th>本文</th></tr></thead><tbody>';
       own.forEach((c, pos) => {
         h += '<tr data-id="' + c.id + '" data-cid="' + c.id + '" style="cursor:pointer"><td class="nowrap">' +
@@ -1455,8 +1484,8 @@ async function setBasicMode(g, mode){
   await loadAll();
   const g2 = findBuilding(g.name);
   if (mode === 'own' && !ownBasicOf(g2).length) {
-    if (confirm('「' + g.name + '」専用の基本特約事項を作ります。\n共通の基本特約をコピーして、そこから直しますか？\n（キャンセルすると空の状態から1条ずつ追加できます）')) await copyCommonBasic(g2);
-    else toast('この建物専用の基本特約事項を使う設定にしました。「＋ 条文を追加」で登録してください。');
+    scrollToOwnBasic();
+    toast('この建物専用の基本特約事項を使う設定にしました。作り方を選んでください。');
   } else {
     toast(mode === 'own' ? 'この建物専用の基本特約事項を使う設定にしました' : '共通の基本特約を使う設定にしました（専用の条文は残してあります）');
   }
@@ -1476,6 +1505,7 @@ async function copyCommonBasic(g){
 }
 $('b-detail-view').addEventListener('click', async (e) => {
   const g = findBuilding(BSEL); if (!g) return;
+  if (e.target.closest('#bd-own-bulk')) { openOwnBulk(g); return; }
   if (e.target.closest('#bd-own-copy')) {
     if (ownBasicOf(g).length && !confirm('今の条文の後ろに、共通の基本特約を追加で読み込みます。よろしいですか？')) return;
     await copyCommonBasic(g); return;
@@ -1484,6 +1514,71 @@ $('b-detail-view').addEventListener('click', async (e) => {
     const own = ownBasicOf(g);
     openClause(null, { category: '基本特約', heading: g.name + ' 基本特約事項', buildings: [g.name], sort_order: own.length ? Math.max(...own.map(c => c.sort_order)) + 1 : 1 });
   }
+});
+
+// ---- 建物専用の基本特約事項を、文章のまま自由に書いて登録・編集する ----
+let OWN_BULK = null; // 編集中の建物
+const VARIANT_TAG = /^【(和室あり|和室なし)】\s*/;
+// 和室あり/なしの文面が続く場合は、契約書では同じ1条なので同じ番号にする
+function ownToText(g){
+  let n = 0, prev = null;
+  return ownBasicOf(g).map(c => {
+    if (!(c.variant && prev && prev.variant && prev.variant !== c.variant)) n++;
+    prev = c;
+    return n + '．' + (c.variant ? '【' + c.variant + '】' : '') + c.body;
+  }).join('\n');
+}
+// 番号（1．・２．・「・」など）で始まる行ごとに1条。番号のない行は直前の条文の続き（空行のあとは新しい条文）
+function parseOwnText(text){
+  const out = []; let cur = null, gap = false;
+  String(text || '').replace(/\r/g, '').split('\n').forEach(raw => {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { gap = true; return; }
+    const stripped = P.stripNumber(line);
+    if (stripped !== null || !cur || gap) { cur = { body: (stripped !== null ? stripped : line.trim()) }; out.push(cur); }
+    else cur.body += '\n' + line.trim();
+    gap = false;
+  });
+  return out.map(c => {
+    const m = c.body.match(VARIANT_TAG);
+    return { body: c.body.replace(VARIANT_TAG, '').trim(), variant: m ? m[1] : null };
+  }).filter(c => c.body);
+}
+function openOwnBulk(g){
+  OWN_BULK = g;
+  $('ob-title').textContent = '「' + g.name + '」の基本特約事項を文章で' + (ownBasicOf(g).length ? '編集' : '作成');
+  $('ob-text').value = ownToText(g);
+  updateOwnBulkCount();
+  $('dlg-ownbulk').showModal();
+  $('ob-text').focus();
+}
+function updateOwnBulkCount(){
+  const items = parseOwnText($('ob-text').value);
+  const v = items.filter(c => c.variant).length;
+  $('ob-count').textContent = items.length ? items.length + '条として登録します' + (v ? '（うち和室あり/なしの指定 ' + v + '条）' : '') : '条文がありません';
+}
+$('ob-text').addEventListener('input', debounce(updateOwnBulkCount, 200));
+$('ob-save').addEventListener('click', async () => {
+  const g = OWN_BULK, items = parseOwnText($('ob-text').value);
+  const old = ownBasicOf(g);
+  if (!items.length && !confirm('条文が空です。この建物専用の基本特約事項をすべて削除しますか？')) return;
+  // 同じ文面（和室の指定も同じ）の条文は今の条文をそのまま使い、並び順だけ付け直す。メモなども残る
+  const unused = old.slice(), now = nowIso(), ops = [];
+  items.forEach((it, i) => {
+    const k = norm(it.body) + '|' + (it.variant || '');
+    const idx = unused.findIndex(c => norm(c.body) + '|' + (c.variant || '') === k);
+    if (idx >= 0) { const c = unused.splice(idx, 1)[0]; if (c.sort_order !== i + 1) ops.push(sb.from('tokuyaku_clauses').update({ sort_order: i + 1, updated_at: now }).eq('id', c.id)); }
+    else ops.push(sb.from('tokuyaku_clauses').insert({ category: '基本特約', heading: g.name + ' 基本特約事項', body: it.body, variant: it.variant,
+      buildings: [g.name], sub_tags: [], attributes: [], guarantors: [], sort_order: i + 1, source: '文章で作成・編集' }));
+  });
+  // 文章からなくなった条文は「削除済み」にする（一覧・編集から元に戻せる）
+  if (unused.length) ops.push(sb.from('tokuyaku_clauses').update({ archived: true, updated_at: now }).in('id', unused.map(c => c.id)));
+  const results = await Promise.all(ops);
+  const err = results.find(r => r.error);
+  if (err) { toast('保存に失敗しました：' + err.error.message, true); await loadAll(); return; }
+  $('dlg-ownbulk').close();
+  toast('「' + g.name + '」の基本特約事項を ' + items.length + '条で保存しました');
+  await loadAll(); scrollToOwnBasic();
 });
 
 // 「この建物では使わない基本特約」のチェックはすぐ保存する
