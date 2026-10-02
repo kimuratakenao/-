@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
 
-  var CATEGORIES = ['基本特約', '物件別追加特約', '属性別特約', 'その他の特約', '駐車場特約', '保証会社別特約'];
+  var CATEGORIES = ['共通基本特約事項', '物件別基本特約事項', '物件別追加特約', '属性別特約', 'その他の特約', '駐車場特約', '保証会社別特約'];
 
   // 保証会社の表記 → 正式に扱う名前
   var GUARANTORS = [
@@ -106,7 +106,7 @@
     // カテゴリ判定には（）内の補足を使わない（例: KAYADA2126（定期借家：非再契約）は建物名）
     var nameAttrs = matchAttributes(text.replace(/[（(][^）)]*[）)]/g, ''));
 
-    if (/特約基本事項|基本特約/.test(text)) r.category = '基本特約';
+    if (/特約基本事項|基本特約/.test(text)) r.category = '共通基本特約事項';
     else if (/駐車場|駐車区画|車両/.test(text)) r.category = '駐車場特約';
     else if (g) { r.category = '保証会社別特約'; r.guarantors = [g]; }
     else if (nameAttrs.length && !(parentCat === '物件別追加特約')) r.category = '属性別特約';
@@ -163,7 +163,7 @@
       if (level === 'sub' && parent && own) b.heading = parent.heading + ' ＞ ' + own;
       b.category = c.category; b.buildings = c.buildings; b.subTags = c.subTags; b.attributes = c.attributes;
       b.guarantors = c.guarantors; b.effectiveFrom = c.effectiveFrom; b.memo = c.memo;
-      b.versionLabel = c.category === '基本特約' ? (c.effectiveFrom ? c.effectiveFrom.slice(0, 4) + '.' + parseInt(c.effectiveFrom.slice(5, 7), 10) + '〜版' : '通常版') : null;
+      b.versionLabel = c.category === '共通基本特約事項' ? (c.effectiveFrom ? c.effectiveFrom.slice(0, 4) + '.' + parseInt(c.effectiveFrom.slice(5, 7), 10) + '〜版' : '通常版') : null;
       blocks.push(b);
       gap = false; lastWasClause = false;
       return b;

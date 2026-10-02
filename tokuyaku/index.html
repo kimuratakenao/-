@@ -354,8 +354,8 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
         <h2 class="cond-step"><span class="step-no">2</span>基本特約事項を選ぶ</h2>
         <div class="field-row">
           <div class="radio-row" style="flex-direction:column; gap:4px;">
-            <label><input type="radio" name="q-basic" value="common" checked> 共通の基本特約事項</label>
-            <label><input type="radio" name="q-basic" value="own"> この建物専用の基本特約事項</label>
+            <label><input type="radio" name="q-basic" value="common" checked> 共通基本特約事項</label>
+            <label><input type="radio" name="q-basic" value="own"> 物件別基本特約事項（この建物用）</label>
           </div>
           <div id="q-basic-info"></div>
         </div>
@@ -366,7 +366,7 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
             <label><input type="radio" name="q-washitsu" value="和室なし" checked> なし</label>
             <label><input type="radio" name="q-washitsu" value="和室あり"> あり</label>
           </div>
-          <div class="hint">基本特約の「退室後の費用負担」の文面が切り替わります。建物の基本情報に登録してあれば自動で入ります。</div>
+          <div class="hint">基本特約事項の「退室後の費用負担」の文面が切り替わります。建物の基本情報に登録してあれば自動で入ります。</div>
         </div>
         <div class="field-row">
           <div class="sub-head"><label class="field">属性</label><button class="linkbtn" data-add-cat="属性別特約">＋追加</button></div>
@@ -514,7 +514,7 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
 <datalist id="dl-bld-headings"></datalist>
 
 <dialog id="dlg-ownbulk">
-  <div class="d-head" id="ob-title">基本特約事項を文章で編集</div>
+  <div class="d-head" id="ob-title">物件別基本特約事項を文章で編集</div>
   <div class="d-body">
     <div class="note-box" style="margin-bottom:10px;">
       条文を自由に書いてください（今使っている特約の文章をそのまま貼り付けても大丈夫です）。<br>
@@ -559,7 +559,7 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
     <div class="grid2">
       <div class="field-row"><label class="field" for="e-buildings">対象建物</label><input type="text" id="e-buildings" list="dl-buildings" placeholder="複数の場合は「、」区切り"></div>
       <div class="field-row"><label class="field" for="e-subtags">サブタグ</label><input type="text" id="e-subtags" placeholder="例：町会費、プロパンガス、ペット"></div>
-      <div class="field-row"><label class="field" for="e-variant">使う条件（基本特約の切り替え）</label>
+      <div class="field-row"><label class="field" for="e-variant">使う条件（基本特約事項の切り替え）</label>
         <select id="e-variant"><option value="">いつも使う</option><option>和室あり</option><option>和室なし</option></select></div>
       <div class="field-row"><label class="field" for="e-sort">並び順</label><input type="number" id="e-sort"><div class="hint">小さいほど上に表示</div></div>
       <div class="field-row"><label class="field" for="e-from">適用開始日</label><input type="date" id="e-from"><div class="hint">空欄＝最初から有効</div></div>
@@ -576,7 +576,7 @@ dialog .d-foot{padding:12px 18px; border-top:1px solid var(--border); display:fl
 </dialog>
 
 <dialog id="dlg-version">
-  <div class="d-head">基本特約の版を改定する</div>
+  <div class="d-head">共通基本特約事項の版を改定する</div>
   <div class="d-body">
     <div class="note-box" id="v-info"></div>
     <div class="grid2">
@@ -605,13 +605,17 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const P = window.TokuyakuParser;
 
 const CATEGORIES = P.CATEGORIES;
+// 基本特約事項は「共通」と「物件別（建物ごとに作ったもの）」の2つのカテゴリ
+const CAT_COMMON = '共通基本特約事項', CAT_OWN = '物件別基本特約事項';
+function isBasicCat(c){ return c.category === CAT_COMMON || c.category === CAT_OWN; }
 const CAT_DESC = {
-  '基本特約': '全物件共通のベース',
+  '共通基本特約事項': '全物件共通のベース',
+  '物件別基本特約事項': '建物ごとに作った基本特約事項（その建物では共通の代わりに使う）',
   '物件別追加特約': '建物ごとの追加特約',
   '属性別特約': '選んだ属性の特約',
   'その他の特約': '選んだ項目の特約',
   '駐車場特約': '該当するパターンを選んでください',
-  '保証会社別特約': '（現在は基本特約のオリコを使用）'
+  '保証会社別特約': '（現在は共通基本特約事項のオリコの条文を使用）'
 };
 
 let clauses = [], bmeta = [], docs = [];
@@ -653,6 +657,8 @@ async function loadAll(){
   const err = c.error || b.error || d.error;
   if (err){ toast('データの読み込みに失敗しました：' + err.message, true); return; }
   clauses = c.data; bmeta = b.data; docs = d.data;
+  // 古いカテゴリ名「基本特約」のデータは、建物の有無で共通／物件別に読み替える
+  clauses.forEach(x => { if (x.category === '基本特約') x.category = (x.buildings || []).length ? CAT_OWN : CAT_COMMON; });
   refreshMasters();
   renderAll();
 }
@@ -756,23 +762,23 @@ function computeResults(q){
 
   const bg = q.building;
 
-  // 基本特約：②で「この建物専用」を選んだらその建物の基本特約事項、それ以外は共通の基本特約（今日有効な版・和室あり/なしで文面を切り替え）
+  // 基本特約：②で「この建物専用」を選んだらその建物の基本特約事項、それ以外は共通基本特約事項（今日有効な版・和室あり/なしで文面を切り替え）
   if (bg && q.basicMode === 'own') {
-    const own = live.filter(c => c.category === '基本特約' && matchesBuildingGroup(c.buildings, bg)).sort(bySort);
-    groups.push({ key: 'basic', cat: '基本特約', title: '基本特約事項（' + bg.name + ' 専用）', sub: q.washitsu,
+    const own = live.filter(c => c.category === CAT_OWN && matchesBuildingGroup(c.buildings, bg)).sort(bySort);
+    groups.push({ key: 'basic', cat: CAT_OWN, title: CAT_OWN + '（' + bg.name + '）', sub: q.washitsu,
       items: own.map(c => item('basic', c, true, c.variant || null)),
-      note: own.length ? null : 'この建物専用の基本特約事項はまだありません。左の②の「この建物の基本特約事項を作成」から作れます。' });
+      note: own.length ? null : 'この建物の物件別基本特約事項はまだありません。左の②の「この建物の物件別基本特約事項を作成」から作れます。' });
   } else {
-    const basic = live.filter(c => c.category === '基本特約' && isCommonBasic(c)).sort(bySort);
+    const basic = live.filter(c => c.category === CAT_COMMON).sort(bySort);
     const versions = uniq(basic.map(c => c.version_label).filter(Boolean));
-    groups.push({ key: 'basic', cat: '基本特約', title: '基本特約事項（共通）', sub: (versions.length ? '適用される版：' + versions.join('・') + '／' : '') + q.washitsu,
+    groups.push({ key: 'basic', cat: CAT_COMMON, title: CAT_COMMON, sub: (versions.length ? '適用される版：' + versions.join('・') + '／' : '') + q.washitsu,
       // 建物ごとに「使わない」と登録した基本特約は、最初からチェックを外しておく（必要なら入れ直せる）
       items: basic.map(c => {
         const excluded = isExcludedBasic(bg, c.id);
         return item('basic', c, !excluded, excluded ? 'この建物では使わない' : (c.variant || null));
       }),
-      note: !basic.length ? '現在有効な基本特約がありません。「一覧・編集」で適用期間を確認してください。'
-        : (basic.some(c => isExcludedBasic(bg, c.id)) ? 'この建物では使わない基本特約（管理物件のページで登録）は、チェックを外しています。' : null) });
+      note: !basic.length ? '現在有効な共通基本特約事項がありません。「一覧・編集」で適用期間を確認してください。'
+        : (basic.some(c => isExcludedBasic(bg, c.id)) ? 'この建物では使わない共通基本特約事項（管理物件のページで登録）は、チェックを外しています。' : null) });
   }
 
   if (bg) {
@@ -855,7 +861,7 @@ function renderSearch(){
       '<button class="btn small" data-kw-to-building style="margin-left:8px">①の建物名に移す</button></div>';
   }
   if (!q2.buildingText && !q2.attrs.length && !q2.others.length && !q2.parking && !q2.keyword) {
-    html += '<div class="note-box">左の①〜③を選ぶと、使う特約の候補がここに出ます。いまは現在有効な<b>共通の基本特約事項</b>だけを表示しています。</div>';
+    html += '<div class="note-box">左の①〜③を選ぶと、使う特約の候補がここに出ます。いまは現在有効な<b>共通基本特約事項</b>だけを表示しています。</div>';
   }
   RESULT_HEAD = html;
   rerenderResults();
@@ -980,11 +986,11 @@ function renderBasicChoice(){
   const washitsu = (document.querySelector('input[name=q-washitsu]:checked') || {}).value || '和室なし';
   const n = g ? ownBasicOf(g).filter(c => !c.variant || c.variant === washitsu).length : 0;
   let h;
-  if (!g) h = '<div class="hint">①で建物を選ぶと、「この建物専用」を選べます。</div>';
-  else if (mode === 'own' && !n) h = '<div class="hint">「' + esc(g.name) + '」専用の基本特約事項はまだありません。</div>' +
-    '<button class="btn small" data-create-own style="margin-top:4px">この建物の基本特約事項を作成</button>';
-  else if (mode === 'own') h = '<div class="hint">「' + esc(g.name) + '」専用（' + n + '条）を使います。<button class="linkbtn" data-edit-own>管理物件のページで編集</button></div>';
-  else h = '<div class="hint">全物件共通の基本特約事項を使います。' + (n ? '（この建物には専用の基本特約事項 ' + n + '条もあります）' : '') + '</div>';
+  if (!g) h = '<div class="hint">①で建物を選ぶと、「物件別基本特約事項」を選べます。</div>';
+  else if (mode === 'own' && !n) h = '<div class="hint">「' + esc(g.name) + '」の物件別基本特約事項はまだありません。</div>' +
+    '<button class="btn small" data-create-own style="margin-top:4px">この建物の物件別基本特約事項を作成</button>';
+  else if (mode === 'own') h = '<div class="hint">「' + esc(g.name) + '」の物件別基本特約事項（' + n + '条）を使います。<button class="linkbtn" data-edit-own>管理物件のページで編集</button></div>';
+  else h = '<div class="hint">全物件共通の「共通基本特約事項」を使います。' + (n ? '（この建物には物件別基本特約事項 ' + n + '条もあります）' : '') + '</div>';
   $('q-basic-info').innerHTML = h;
 }
 document.querySelectorAll('input[name=q-basic]').forEach(r => r.addEventListener('change', renderSearch));
@@ -1133,13 +1139,13 @@ function renderBuildings(){
   const kw = norm($('b-keyword').value), status = $('b-status').value;
   const rows = BIDX.filter(g => (status === 'all' || (status === 'ended') === isEnded(g)) && (!kw || Array.from(g.keys).some(k => k.includes(kw))));
   // 列は管理物件の詳細ページの基本情報と同じ順にそろえる
-  let h = '<table class="list bld-list"><tr><th>建物名</th><th>基本特約</th><th>和室</th><th>駐車場</th><th>ペット</th><th>楽器等の演奏</th><th>ガス</th><th>メモ</th><th>物件別特約</th><th>前回作成</th></tr>';
+  let h = '<table class="list bld-list"><tr><th>建物名</th><th>基本特約事項</th><th>和室</th><th>駐車場</th><th>ペット</th><th>楽器等の演奏</th><th>ガス</th><th>メモ</th><th>物件別特約</th><th>前回作成</th></tr>';
   rows.forEach(g => {
     const m = g.meta || {};
-    const cn = clauses.filter(c => !c.archived && c.category !== '基本特約' && matchesBuildingGroup(c.buildings, g)).length;
+    const cn = clauses.filter(c => !c.archived && !isBasicCat(c) && matchesBuildingGroup(c.buildings, g)).length;
     const last = docsOf(g)[0];
     h += '<tr' + (isEnded(g) ? ' class="ended"' : '') + '><td><button class="b-name" data-bname="' + esc(g.name) + '">' + esc(g.name) + '</button>' +
-      (isEnded(g) ? '<br><span class="chip old">管理終了 ' + esc(m.ended_at.replace(/-/g, '/')) + '</span>' : '') + '</td><td class="nowrap">' + (isOwnBasic(g) ? '<span class="chip cat">専用</span>' : '共通') + '</td><td class="nowrap">' + esc(m.washitsu || '') + '</td><td class="nowrap">' + esc(m.parking || '') +
+      (isEnded(g) ? '<br><span class="chip old">管理終了 ' + esc(m.ended_at.replace(/-/g, '/')) + '</span>' : '') + '</td><td class="nowrap">' + (isOwnBasic(g) ? '<span class="chip cat">物件別</span>' : '共通') + '</td><td class="nowrap">' + esc(m.washitsu || '') + '</td><td class="nowrap">' + esc(m.parking || '') +
       '</td><td>' + esc(m.pet || '') + '</td><td>' + esc(m.instrument || '') + '</td><td class="nowrap">' + esc(m.gas || '') + '</td><td>' + esc(m.memo || '') +
       '</td><td class="nowrap">' + cn + '件</td><td class="nowrap">' + (last ? esc(fmtDateTime(last.created_at)) : '') + '</td></tr>';
   });
@@ -1157,7 +1163,7 @@ function isExcludedBasic(g, id){ return !!(g && g.meta && (g.meta.excluded_basic
 // 基本特約：共通（buildings なし）か、建物専用（buildings にその建物名）か
 function isOwnBasic(g){ return !!(g && g.meta && g.meta.basic_mode === 'own'); }
 function isCommonBasic(c){ return !(c.buildings || []).length; }
-function ownBasicOf(g){ return clauses.filter(c => !c.archived && c.category === '基本特約' && matchesBuildingGroup(c.buildings, g)).sort(bySort); }
+function ownBasicOf(g){ return clauses.filter(c => !c.archived && c.category === CAT_OWN && matchesBuildingGroup(c.buildings, g)).sort(bySort); }
 $('b-keyword').addEventListener('input', debounce(renderBuildings, 200));
 $('b-status').addEventListener('change', renderBuildings);
 $('buildings-body').addEventListener('click', (e) => { if (e.target.closest('#b-show-ended')) { $('b-status').value = 'ended'; renderBuildings(); } });
@@ -1194,8 +1200,8 @@ function renderBuildingDetail(){
   // 基本情報
   h += '<div class="b-sec b-info"><h3>基本情報<span class="spacer"></span><button class="btn small" id="bd-save">保存</button></h3>';
   h += '<div class="info-grid">' +
-    '<div><label class="field" for="bd-basic-mode">基本特約</label><select id="bd-basic-mode" style="width:100%">' +
-      '<option value="common"' + (isOwnBasic(g) ? '' : ' selected') + '>共通</option><option value="own"' + (isOwnBasic(g) ? ' selected' : '') + '>この建物専用</option></select></div>' +
+    '<div><label class="field" for="bd-basic-mode">基本特約事項</label><select id="bd-basic-mode" style="width:100%">' +
+      '<option value="common"' + (isOwnBasic(g) ? '' : ' selected') + '>共通</option><option value="own"' + (isOwnBasic(g) ? ' selected' : '') + '>物件別</option></select></div>' +
     '<div><label class="field" for="bd-washitsu">和室</label>' + sel('bd-washitsu', ['', 'あり', 'なし'], m.washitsu) + '</div>' +
     '<div><label class="field" for="bd-parking">駐車場</label>' + sel('bd-parking', ['', 'あり', 'なし'], m.parking) + '</div>' +
     '<div><label class="field" for="bd-pet">ペット</label><input type="text" id="bd-pet" value="' + esc(m.pet || '') + '" placeholder="例：不可"></div>' +
@@ -1232,18 +1238,18 @@ function renderBuildingDetail(){
   });
   h += '</div>';
 
-  // 基本特約（共通を使う／この建物専用の基本特約事項を使う）
+  // 基本特約（共通を使う／この建物の物件別基本特約事項を使う）
   const today = todayStr();
   if (isOwnBasic(g)) {
     const own = ownBasicOf(g);
-    h += '<div class="b-sec" id="own-basic-sec"><h3>基本特約事項（この建物専用）<span class="chip">' + own.length + '件</span><span class="spacer"></span>' +
-      (own.length ? '<button class="btn small" id="bd-own-bulk">文章でまとめて編集</button><button class="btn secondary small" id="bd-own-copy">共通の基本特約を読み込む</button><button class="btn secondary small" id="bd-own-add">＋ 条文を追加</button>' : '') + '</h3>' +
-      '<div class="hint" style="margin-bottom:6px;">「特約事項作成」でこの建物を選ぶと、共通の基本特約の代わりにここの条文が出ます。行をクリックで1条ずつ編集、「⠿」のドラッグで並べ替え、「文章でまとめて編集」で全体を文章のまま書き換えられます。共通の基本特約に戻すときは、基本情報の「基本特約」を「共通」にしてください。</div>';
+    h += '<div class="b-sec" id="own-basic-sec"><h3>物件別基本特約事項（この建物用）<span class="chip">' + own.length + '件</span><span class="spacer"></span>' +
+      (own.length ? '<button class="btn small" id="bd-own-bulk">文章でまとめて編集</button><button class="btn secondary small" id="bd-own-copy">共通基本特約事項を読み込む</button><button class="btn secondary small" id="bd-own-add">＋ 条文を追加</button>' : '') + '</h3>' +
+      '<div class="hint" style="margin-bottom:6px;">「特約事項作成」でこの建物を選ぶと、共通基本特約事項の代わりにここの条文が出ます。行をクリックで1条ずつ編集、「⠿」のドラッグで並べ替え、「文章でまとめて編集」で全体を文章のまま書き換えられます。共通基本特約事項に戻すときは、基本情報の「基本特約事項」を「共通」にしてください。</div>';
     if (!own.length) {
       // 作り方を選ぶ
       h += '<div class="own-start"><div class="own-start-title">まだ登録されていません。作り方を選んでください。</div>' +
         '<button class="own-opt" id="bd-own-bulk"><b>文章で書く・貼り付ける</b><span>条文を自由に書くか、今使っている特約の文章をそのまま貼り付けます。番号ごとに条文として登録します。</span></button>' +
-        '<button class="own-opt" id="bd-own-copy"><b>共通の基本特約を読み込む</b><span>共通の基本特約事項をコピーしてから、この建物に合わせて直します。</span></button>' +
+        '<button class="own-opt" id="bd-own-copy"><b>共通基本特約事項を読み込む</b><span>共通基本特約事項をコピーしてから、この建物に合わせて直します。</span></button>' +
         '<button class="own-opt" id="bd-own-add"><b>1条ずつ追加する</b><span>条文を1つずつ入力して登録します。</span></button></div>';
     } else {
       h += '<div class="scroll-x"><table class="list bld-clauses"><thead><tr><th style="width:80px">並び順</th><th>本文</th></tr></thead><tbody>';
@@ -1257,12 +1263,12 @@ function renderBuildingDetail(){
     }
     h += '</div>';
   } else {
-    const basicNow = clauses.filter(c => !c.archived && c.category === '基本特約' && isCommonBasic(c) && isValidOn(c, today)).sort(bySort);
+    const basicNow = clauses.filter(c => !c.archived && c.category === CAT_COMMON && isValidOn(c, today)).sort(bySort);
     const exN = basicNow.filter(c => isExcludedBasic(g, c.id)).length;
-    h += '<div class="b-sec"><h3>基本特約（共通）<span class="chip">使わない ' + exN + '件</span></h3>' +
-      '<div class="hint" style="margin-bottom:6px;">この建物は共通の基本特約を使います。この建物で使わない条文にチェックを入れると、「特約事項作成」で最初からチェックが外れた状態で出ます（チェックするとすぐ保存されます）。' +
-      'この建物だけ基本特約の内容が大きく違う場合は、基本情報の「基本特約」を「この建物専用」にしてください。</div>';
-    if (!basicNow.length) h += '<div class="empty">現在有効な基本特約がありません</div>';
+    h += '<div class="b-sec"><h3>共通基本特約事項<span class="chip">使わない ' + exN + '件</span></h3>' +
+      '<div class="hint" style="margin-bottom:6px;">この建物は共通基本特約事項を使います。この建物で使わない条文にチェックを入れると、「特約事項作成」で最初からチェックが外れた状態で出ます（チェックするとすぐ保存されます）。' +
+      'この建物だけ基本特約事項の内容が大きく違う場合は、基本情報の「基本特約事項」を「物件別」にしてください。</div>';
+    if (!basicNow.length) h += '<div class="empty">現在有効な共通基本特約事項がありません</div>';
     else {
       h += '<div class="ex-list">' + basicNow.map(c =>
         '<label class="ex-row' + (isExcludedBasic(g, c.id) ? ' on' : '') + '"><input type="checkbox" data-exclude="' + c.id + '"' + (isExcludedBasic(g, c.id) ? ' checked' : '') + '>' +
@@ -1273,7 +1279,7 @@ function renderBuildingDetail(){
   }
 
   // 物件別の特約
-  const cs = clauses.filter(c => !c.archived && c.category !== '基本特約' && matchesBuildingGroup(c.buildings, g)).sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || bySort(a, b));
+  const cs = clauses.filter(c => !c.archived && !isBasicCat(c) && matchesBuildingGroup(c.buildings, g)).sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || bySort(a, b));
   h += '<div class="b-sec"><h3>この建物の特約<span class="chip">' + cs.length + '件</span><span class="spacer"></span><button class="btn secondary small" id="bd-pick-clause">＋ 見出しから選んで追加</button><button class="btn small" id="bd-add-clause">＋ 特約を直接入力して追加</button></h3>';
   if (!cs.length) h += '<div class="empty">登録されていません</div>';
   else {
@@ -1472,7 +1478,7 @@ $('b-detail-view').addEventListener('input', (e) => {
   if (e.target.classList.contains('autogrow')) autoGrow(e.target);
   scheduleDocSave(+box.dataset.doc);
 });
-// ---- 基本特約：共通を使う／この建物専用の基本特約事項を使う ----
+// ---- 基本特約：共通を使う／この建物の物件別基本特約事項を使う ----
 $('b-detail-view').addEventListener('change', async (e) => {
   if (e.target.id !== 'bd-basic-mode') return;
   await setBasicMode(findBuilding(BSEL), e.target.value);
@@ -1485,34 +1491,34 @@ async function setBasicMode(g, mode){
   const g2 = findBuilding(g.name);
   if (mode === 'own' && !ownBasicOf(g2).length) {
     scrollToOwnBasic();
-    toast('この建物専用の基本特約事項を使う設定にしました。作り方を選んでください。');
+    toast('この建物の物件別基本特約事項を使う設定にしました。作り方を選んでください。');
   } else {
-    toast(mode === 'own' ? 'この建物専用の基本特約事項を使う設定にしました' : '共通の基本特約を使う設定にしました（専用の条文は残してあります）');
+    toast(mode === 'own' ? 'この建物の物件別基本特約事項を使う設定にしました' : '共通基本特約事項を使う設定にしました（物件別の条文は残してあります）');
   }
 }
-// 今日有効な共通の基本特約を、この建物専用の基本特約事項としてコピーする（和室あり/なしの文面も両方）
+// 今日有効な共通基本特約事項を、この建物の物件別基本特約事項としてコピーする（和室あり/なしの文面も両方）
 async function copyCommonBasic(g){
-  const common = clauses.filter(c => !c.archived && c.category === '基本特約' && isCommonBasic(c) && isValidOn(c, todayStr())).sort(bySort);
+  const common = clauses.filter(c => !c.archived && c.category === CAT_COMMON && isValidOn(c, todayStr())).sort(bySort);
   const own = ownBasicOf(g);
   let order = own.length ? Math.max(...own.map(c => c.sort_order)) : 0;
-  const rows = common.map(c => ({ category: '基本特約', heading: g.name + ' 基本特約事項', body: c.body, variant: c.variant || null,
+  const rows = common.map(c => ({ category: CAT_OWN, heading: g.name + ' ' + CAT_OWN, body: c.body, variant: c.variant || null,
     buildings: [g.name], sub_tags: [], attributes: [], guarantors: [], memo: c.memo || null, sort_order: ++order,
-    source: '共通の基本特約（' + (c.version_label || '') + '）からコピー' }));
+    source: '共通基本特約事項（' + (c.version_label || '') + '）からコピー' }));
   const r = await sb.from('tokuyaku_clauses').insert(rows);
   if (r.error) { toast('コピーに失敗しました：' + r.error.message, true); return; }
-  toast('共通の基本特約 ' + rows.length + '条をコピーしました。この建物に合わせて直してください。');
+  toast('共通基本特約事項 ' + rows.length + '条をコピーしました。この建物に合わせて直してください。');
   await loadAll();
 }
 $('b-detail-view').addEventListener('click', async (e) => {
   const g = findBuilding(BSEL); if (!g) return;
   if (e.target.closest('#bd-own-bulk')) { openOwnBulk(g); return; }
   if (e.target.closest('#bd-own-copy')) {
-    if (ownBasicOf(g).length && !confirm('今の条文の後ろに、共通の基本特約を追加で読み込みます。よろしいですか？')) return;
+    if (ownBasicOf(g).length && !confirm('今の条文の後ろに、共通基本特約事項を追加で読み込みます。よろしいですか？')) return;
     await copyCommonBasic(g); return;
   }
   if (e.target.closest('#bd-own-add')) {
     const own = ownBasicOf(g);
-    openClause(null, { category: '基本特約', heading: g.name + ' 基本特約事項', buildings: [g.name], sort_order: own.length ? Math.max(...own.map(c => c.sort_order)) + 1 : 1 });
+    openClause(null, { category: CAT_OWN, heading: g.name + ' ' + CAT_OWN, buildings: [g.name], sort_order: own.length ? Math.max(...own.map(c => c.sort_order)) + 1 : 1 });
   }
 });
 
@@ -1546,7 +1552,7 @@ function parseOwnText(text){
 }
 function openOwnBulk(g){
   OWN_BULK = g;
-  $('ob-title').textContent = '「' + g.name + '」の基本特約事項を文章で' + (ownBasicOf(g).length ? '編集' : '作成');
+  $('ob-title').textContent = '「' + g.name + '」の物件別基本特約事項を文章で' + (ownBasicOf(g).length ? '編集' : '作成');
   $('ob-text').value = ownToText(g);
   updateOwnBulkCount();
   $('dlg-ownbulk').showModal();
@@ -1561,14 +1567,14 @@ $('ob-text').addEventListener('input', debounce(updateOwnBulkCount, 200));
 $('ob-save').addEventListener('click', async () => {
   const g = OWN_BULK, items = parseOwnText($('ob-text').value);
   const old = ownBasicOf(g);
-  if (!items.length && !confirm('条文が空です。この建物専用の基本特約事項をすべて削除しますか？')) return;
+  if (!items.length && !confirm('条文が空です。この建物の物件別基本特約事項をすべて削除しますか？')) return;
   // 同じ文面（和室の指定も同じ）の条文は今の条文をそのまま使い、並び順だけ付け直す。メモなども残る
   const unused = old.slice(), now = nowIso(), ops = [];
   items.forEach((it, i) => {
     const k = norm(it.body) + '|' + (it.variant || '');
     const idx = unused.findIndex(c => norm(c.body) + '|' + (c.variant || '') === k);
     if (idx >= 0) { const c = unused.splice(idx, 1)[0]; if (c.sort_order !== i + 1) ops.push(sb.from('tokuyaku_clauses').update({ sort_order: i + 1, updated_at: now }).eq('id', c.id)); }
-    else ops.push(sb.from('tokuyaku_clauses').insert({ category: '基本特約', heading: g.name + ' 基本特約事項', body: it.body, variant: it.variant,
+    else ops.push(sb.from('tokuyaku_clauses').insert({ category: CAT_OWN, heading: g.name + ' ' + CAT_OWN, body: it.body, variant: it.variant,
       buildings: [g.name], sub_tags: [], attributes: [], guarantors: [], sort_order: i + 1, source: '文章で作成・編集' }));
   });
   // 文章からなくなった条文は「削除済み」にする（一覧・編集から元に戻せる）
@@ -1577,11 +1583,11 @@ $('ob-save').addEventListener('click', async () => {
   const err = results.find(r => r.error);
   if (err) { toast('保存に失敗しました：' + err.error.message, true); await loadAll(); return; }
   $('dlg-ownbulk').close();
-  toast('「' + g.name + '」の基本特約事項を ' + items.length + '条で保存しました');
+  toast('「' + g.name + '」の物件別基本特約事項を ' + items.length + '条で保存しました');
   await loadAll(); scrollToOwnBasic();
 });
 
-// 「この建物では使わない基本特約」のチェックはすぐ保存する
+// 「この建物では使わない共通基本特約事項」のチェックはすぐ保存する
 $('b-detail-view').addEventListener('change', async (e) => {
   const cb = e.target.closest('[data-exclude]'); if (!cb) return;
   const g = findBuilding(BSEL), id = +cb.dataset.exclude;
@@ -1590,7 +1596,7 @@ $('b-detail-view').addEventListener('change', async (e) => {
   const r = g.meta ? await sb.from('tokuyaku_buildings').update({ excluded_basic: next, updated_at: nowIso() }).eq('id', g.meta.id)
                    : await sb.from('tokuyaku_buildings').insert({ name: g.name, excluded_basic: next });
   if (r.error) { toast('保存に失敗しました：' + r.error.message, true); cb.checked = !cb.checked; return; }
-  toast(cb.checked ? 'この建物では使わない基本特約に追加しました' : '使う基本特約に戻しました');
+  toast(cb.checked ? 'この建物では使わない共通基本特約事項に追加しました' : '使う共通基本特約事項に戻しました');
   await loadAll();
 });
 // 号室は打ち終わってから保存する（途中の「1」「10」で別の号室に移らないように）
@@ -1814,13 +1820,13 @@ function renderList(){
     if (!cr.length) return;
     h += '<h2 class="list-group-title">' + esc(catName) + '<span class="chip">' + cr.length + '件</span>' + (CAT_DESC[catName] ? '<span class="hint">' + esc(CAT_DESC[catName]) + '</span>' : '') + '</h2>';
     let heads = uniq(cr.map(c => c.heading));
-    if (catName === '物件別追加特約') {
+    if (catName === '物件別追加特約' || catName === CAT_OWN) {
       // 「建物」タブと同じ建物名の順に並べる（同じ建物の見出し同士は並び順のまま）
       const bpos = head => { const c = cr.find(x => x.heading === head); const g = c && c.buildings && c.buildings.length ? findBuilding(c.buildings[0]) : null; return g ? BIDX.indexOf(g) : Infinity; };
       heads = heads.map((head, i) => ({ head, i, p: bpos(head) })).sort((a, b) => (a.p - b.p) || (a.i - b.i)).map(x => x.head);
     }
     // 見出しの並び替え：物件別は建物名の順で自動に並ぶので対象外
-    const headDrag = catName !== '物件別追加特約' && heads.length > 1;
+    const headDrag = catName !== '物件別追加特約' && catName !== CAT_OWN && heads.length > 1;
     h += '<div class="cat-heads">';
     heads.forEach((head, hi) => {
       const hr = cr.filter(c => c.heading === head);
@@ -1835,7 +1841,7 @@ function renderList(){
         (first.effective_to && first.effective_to < today ? '<span class="chip old">旧版（〜' + esc(first.effective_to) + '）</span>' : '') +
         '<button class="linkbtn" data-act="add-to" data-head="' + esc(head) + '" data-cat="' + esc(catName) + '">＋この見出しに追加</button>' +
         '<button class="linkbtn" data-act="rename-head" data-head="' + esc(head) + '" data-cat="' + esc(catName) + '">見出しを変更</button>' +
-        (catName === '基本特約' && cur.length ? '<button class="linkbtn" data-act="revise" data-head="' + esc(head) + '">この版を改定する</button>' : '') +
+        (catName === CAT_COMMON && cur.length ? '<button class="linkbtn" data-act="revise" data-head="' + esc(head) + '">この版を改定する</button>' : '') +
         '</div>';
       h += '<div class="scroll-x"><table class="list"><tr><th style="width:92px">並び順</th><th>本文</th><th style="width:22%">タグ</th><th style="width:130px">適用期間</th></tr>';
       hr.forEach((c, pos) => {
@@ -1854,7 +1860,7 @@ function renderList(){
       h += '</table></div></div>';
     });
     h += '</div>';
-    if (catName === '物件別追加特約' && heads.length > 1) h += '<div class="hint">物件別追加特約の見出しは、管理物件の建物名の順に自動で並びます。</div>';
+    if ((catName === '物件別追加特約' || catName === CAT_OWN) && heads.length > 1) h += '<div class="hint">' + catName + 'の見出しは、管理物件の建物名の順に自動で並びます。</div>';
   });
   if (!rows.length) h += '<div class="empty">該当する特約はありません</div>';
   $('list-body').innerHTML = h;
@@ -2048,7 +2054,7 @@ $('h-save').addEventListener('click', async () => {
 let revising = null;
 function openRevise(head){
   const today = todayStr();
-  const cur = clauses.filter(c => c.category === '基本特約' && c.heading === head && !c.archived && (!c.effective_to || c.effective_to >= today));
+  const cur = clauses.filter(c => c.category === CAT_COMMON && c.heading === head && !c.archived && (!c.effective_to || c.effective_to >= today));
   revising = { head, cur };
   $('v-info').textContent = '「' + head + '」（' + ((cur[0] && cur[0].version_label) || '版名なし') + '、' + cur.length + '条）をもとに新しい版を作ります。';
   $('v-label').value = ''; $('v-from').value = '';
@@ -2064,7 +2070,7 @@ $('v-do').addEventListener('click', async () => {
     guarantors: c.guarantors, variant: c.variant, effective_from: from, effective_to: null, version_label: label, memo: c.memo, sort_order: c.sort_order, source: '版改定（' + revising.head + 'より複製）' }));
   const ins = await sb.from('tokuyaku_clauses').insert(rows).select('id');
   if (ins.error) { toast('作成に失敗しました：' + ins.error.message, true); return; }
-  // 「この建物では使わない基本特約」の設定を、新しい版の同じ条文にも引き継ぐ
+  // 「この建物では使わない共通基本特約事項」の設定を、新しい版の同じ条文にも引き継ぐ
   const idMap = new Map(revising.cur.map((c, i) => [c.id, ins.data[i] && ins.data[i].id]));
   for (const m of bmeta.filter(m => (m.excluded_basic || []).some(id => idMap.has(id)))) {
     const add = m.excluded_basic.filter(id => idMap.has(id)).map(id => idMap.get(id)).filter(Boolean);
@@ -2074,7 +2080,7 @@ $('v-do').addEventListener('click', async () => {
   if (upd.error) { toast('旧版の終了日の設定に失敗しました：' + upd.error.message, true); }
   $('dlg-version').close(); toast('新しい版「' + label + '」を作成しました。内容を編集してください。');
   await loadAll();
-  $('l-category').value = '基本特約'; $('l-keyword').value = ''; renderList();
+  $('l-category').value = CAT_COMMON; $('l-keyword').value = ''; renderList();
 });
 
 // ================= テキスト取り込み =================
@@ -2162,7 +2168,7 @@ $('i-save').addEventListener('click', async () => {
     b.clauses.filter(c => c.on && c.body.trim()).forEach((c, i) => {
       order += 10;
       rows.push({ category: b.category, heading: b.heading.trim(), body: c.body.trim(), buildings: b.buildings, sub_tags: b.subTags, attributes: b.attributes,
-        guarantors: b.guarantors, effective_from: b.effectiveFrom || null, version_label: b.category === '基本特約' ? (b.versionLabel || null) : null,
+        guarantors: b.guarantors, effective_from: b.effectiveFrom || null, version_label: b.category === CAT_COMMON ? (b.versionLabel || null) : null,
         memo: i === 0 && b.memo ? b.memo : null, sort_order: order, source: 'テキスト取り込み ' + b.lineNo + '行目' });
     });
   });
