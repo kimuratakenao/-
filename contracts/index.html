@@ -231,6 +231,11 @@ tbody tr.clickable-row{cursor:pointer;}
         <option value="契約">契約</option>
         <option value="解約">解約</option>
       </select>
+      <select id="category-filter-contracts">
+        <option value="">物件区分: すべて</option>
+        <option value="オーナー物件">オーナー物件</option>
+        <option value="自社物件">自社物件</option>
+      </select>
       <select id="status-filter-contracts">
         <option value="">ステータス: すべて</option>
         <option value="申込・審査中">申込・審査中</option>
@@ -257,6 +262,11 @@ tbody tr.clickable-row{cursor:pointer;}
     <div class="note-box">入居前点検・鍵交換の記録です。契約を選んで登録します。1契約に複数件登録することもできます。</div>
     <div class="toolbar">
       <input type="text" id="search-inspections" placeholder="物件名・部屋番号で検索">
+      <select id="category-filter-inspections">
+        <option value="">物件区分: すべて</option>
+        <option value="オーナー物件">オーナー物件</option>
+        <option value="自社物件">自社物件</option>
+      </select>
       <select id="closed-filter-inspections">
         <option value="open">未クローズ</option>
         <option value="closed">クローズ済</option>
@@ -275,6 +285,11 @@ tbody tr.clickable-row{cursor:pointer;}
     <div class="toolbar">
       <input type="text" id="search-restorations" placeholder="物件名・部屋番号で検索">
       <input type="month" id="month-filter-restorations" title="退去日検索（月）">
+      <select id="category-filter-restorations">
+        <option value="">物件区分: すべて</option>
+        <option value="オーナー物件">オーナー物件</option>
+        <option value="自社物件">自社物件</option>
+      </select>
       <select id="closed-filter-restorations">
         <option value="open">未クローズ</option>
         <option value="closed">クローズ済</option>
@@ -432,6 +447,11 @@ const ASSIGNEE_FIELD = {
   assignee:{ label:'担当者', type:'text', suggest:'name' },
 };
 
+// 物件区分（オーナー物件／自社物件）。登録区分の隣に置き、②③の一覧・編集画面にも反映する
+const PROPERTY_CATEGORY_FIELD = {
+  property_category:{ label:'物件区分', type:'select', options:['オーナー物件','自社物件'] },
+};
+
 // 契約でも解約でも共通して必要な項目
 const CONTRACT_COMMON_FIELDS = {
   property_name:{ label:'物件名', type:'text', required:true },
@@ -547,6 +567,7 @@ const CONTRACT_CANCEL_FIELDS = {
 
 const INSPECTION_FIELDS = {
   contract_id:{ label:'対象物件', type:'contract-select', required:true },
+  property_category_display:{ label:'物件区分', type:'computed' },
   inspector:{ label:'点検担当者', type:'text', suggest:'name' },
   move_in_scheduled_display:{ label:'入居予定日', type:'computed' },
   move_in_confirmed_display:{ label:'入居確定日', type:'computed' },
@@ -564,6 +585,7 @@ const INSPECTION_FIELDS = {
 
 const RESTORATION_FIELDS = {
   contract_id:{ label:'対象物件', type:'contract-select', required:true },
+  property_category_display:{ label:'物件区分', type:'computed' },
   staff:{ label:'担当者', type:'text', suggest:'name' },
   move_out_received_display:{ label:'退去受付日', type:'computed' },
   move_out_date_display:{ label:'退去日（解約日）', type:'computed' },
@@ -878,13 +900,14 @@ function filteredContracts(all){
   const statusFilter = document.getElementById('status-filter-contracts').value;
   const typeFilter = document.getElementById('type-filter-contracts').value;
   const closedFilter = document.getElementById('closed-filter-contracts').value;
+  const categoryFilter = document.getElementById('category-filter-contracts').value;
   let list = contracts.map(function(r){ return Object.assign({}, r, { status: contractStatus(r) }); });
   list = list.filter(function(r){
     if (all) return true;
-    const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name].join(' ').toLowerCase();
+    const hay = [r.property_name, r.room_no, r.resident_name, r.contract_name, r.property_category].join(' ').toLowerCase();
     const monthTargetDate = r.record_type === '解約' ? r.move_out_date : r.move_in_confirmed_date;
     const matchesMonth = !monthFilter || (monthTargetDate && monthTargetDate.slice(0,7) === monthFilter);
-    return (!search || hay.indexOf(search) !== -1) && matchesMonth && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && matchesClosedFilter(closedFilter, r.is_closed);
+    return (!search || hay.indexOf(search) !== -1) && matchesMonth && (!statusFilter || r.status === statusFilter) && (!typeFilter || r.record_type === typeFilter) && (!categoryFilter || r.property_category === categoryFilter) && matchesClosedFilter(closedFilter, r.is_closed);
   });
   const s = sort.contracts;
   list.sort(function(a, b){
@@ -897,12 +920,12 @@ function filteredContracts(all){
   return list;
 }
 
-const CONTRACT_COLS = ['record_type','property_name','room_no','contract_name','contract_date','move_in_confirmed_date','move_out_date','status','assignee'];
+const CONTRACT_COLS = ['record_type','property_category','property_name','room_no','contract_name','contract_date','move_in_confirmed_date','move_out_date','status','assignee'];
 const CONTRACT_COL_LABELS = { status:'ステータス', record_type:'区分' };
 // 列幅：物件名・契約者名を広めに、区分・部屋番号・日付・担当者・操作は詰める
-const CONTRACT_COL_WIDTHS = { record_type:6, property_name:23, room_no:6, contract_name:20, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:10, assignee:5 };
-const CONTRACT_COL_CENTER = { room_no:true, assignee:true };
-const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
+const CONTRACT_COL_WIDTHS = { record_type:6, property_category:9, property_name:19, room_no:6, contract_name:16, contract_date:10, move_in_confirmed_date:10, move_out_date:10, status:9, assignee:5 };
+const CONTRACT_COL_CENTER = { room_no:true, assignee:true, property_category:true };
+const ALL_CONTRACT_FIELD_DEFS = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PROPERTY_CATEGORY_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS);
 
 function renderContracts(){
   const list = filteredContracts();
@@ -947,6 +970,7 @@ document.getElementById('search-contracts').addEventListener('input', renderCont
 document.getElementById('month-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('status-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('type-filter-contracts').addEventListener('change', renderContracts);
+document.getElementById('category-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('closed-filter-contracts').addEventListener('change', renderContracts);
 document.getElementById('add-contract').addEventListener('click', function(){ openContractModal(null); });
 function exportContractsCsv(all){
@@ -1008,10 +1032,11 @@ function contractModalHtml(record){
     CONTRACT_TYPE_FIELDS.record_type.options.map(function(o){ return '<option value="' + esc(o) + '"' + (o === recordType ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
     '</select></div>';
   const assigneeFieldHtml = renderField('assignee', ASSIGNEE_FIELD.assignee, record ? record.assignee : '');
+  const categoryFieldHtml = renderField('property_category', PROPERTY_CATEGORY_FIELD.property_category, record ? record.property_category : '');
   return '' +
     '<h2>' + (record ? '編集：' + esc(contractLabel(record)) : '契約 新規登録') + '</h2>' +
     '<div class="sub">物件名・部屋番号・契約者ごとに1行の契約データです。同じ部屋でも入居者が変われば新しい契約として登録してください。「登録区分」が契約の間は②入居前点検、解約になったら③退去・原状回復工事にだけ表示されます。区分を変えると入力項目も切り替わります。</div>' +
-    '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + assigneeFieldHtml + '</div></fieldset>' +
+    '<fieldset><legend>登録区分</legend><div class="form-grid">' + typeSelectHtml + assigneeFieldHtml + categoryFieldHtml + '</div></fieldset>' +
     '<div id="contract-form-body">' + contractFormBodyHtml(recordType, record) + '</div>' +
     (record ? relatedRecordsHtml(record.id) : '') +
     updatedByFieldHtml(record) +
@@ -1100,7 +1125,7 @@ function openContractModal(record){
 
 async function saveContract(record){
   const modal = document.getElementById('modal');
-  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
+  const allFields = Object.assign({}, CONTRACT_TYPE_FIELDS, ASSIGNEE_FIELD, PROPERTY_CATEGORY_FIELD, CONTRACT_COMMON_FIELDS, CONTRACT_ONLY_FIELDS, CANCEL_ONLY_FIELDS, CONTRACT_NEW_FIELDS, CONTRACT_CANCEL_FIELDS, UPDATED_BY_FIELD);
   const payload = {};
   let firstError = null;
   modal.querySelectorAll('[data-key]').forEach(function(el){ el.classList.remove('field-error'); });
@@ -1358,13 +1383,14 @@ function siteStatus(record, fieldsObj, excludeKeys){
 function filteredInspections(all){
   const search = document.getElementById('search-inspections').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-inspections').value;
+  const categoryFilter = document.getElementById('category-filter-inspections').value;
   return contracts
     .filter(function(c){ return c.record_type === '契約' && (c.contract_date || c.move_in_confirmed_date); })
     .map(function(c){ return { contract:c, inspection: latestByContract(inspections, c.id) }; })
     .filter(function(row){
       if (all) return true;
-      const hay = contractLabel(row.contract).toLowerCase();
-      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.inspection && row.inspection.is_closed);
+      const hay = (contractLabel(row.contract) + ' ' + (row.contract.property_category || '')).toLowerCase();
+      return (!search || hay.indexOf(search) !== -1) && (!categoryFilter || row.contract.property_category === categoryFilter) && matchesClosedFilter(closedFilter, row.inspection && row.inspection.is_closed);
     });
 }
 function renderInspections(){
@@ -1372,14 +1398,15 @@ function renderInspections(){
   document.getElementById('count-inspections').textContent = list.length + '件';
   const table = document.getElementById('table-inspections');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:14%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:9%">申込時情報</th><th style="width:9%">入居予定日</th><th style="width:9%">入居確定日</th><th style="width:9%">点検予定日</th><th style="width:9%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:9%">点検完了日</th><th style="width:9%">通電停止</th><th style="width:6%">担当者</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:13%">対象物件</th><th style="width:5%">部屋番号</th><th style="width:9%">物件区分</th><th style="width:9%">申込時情報</th><th style="width:8%">入居予定日</th><th style="width:8%">入居確定日</th><th style="width:8%">点検予定日</th><th style="width:8%">鍵交換期日</th><th style="width:6%">点火試験</th><th style="width:6%">消毒施工</th><th style="width:8%">点検完了日</th><th style="width:6%">通電停止</th><th style="width:6%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="13"><div class="empty-note">契約が登録されていません</div></td></tr>'; return; }
   tbody.innerHTML = list.map(function(row){
     const r = row.inspection;
     const powerStop = priorTenantPowerStopInfo(row.contract);
     return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(row.contract.property_category) + '</td>' +
       '<td class="wrap-cell">' + esc(row.contract.contract_checklist_notes) + '</td>' +
       '<td>' + esc(row.contract.contract_date) + '</td>' +
       '<td>' + esc(row.contract.move_in_confirmed_date) + '</td>' +
@@ -1404,6 +1431,7 @@ document.getElementById('table-inspections').addEventListener('click', function(
   }
 });
 document.getElementById('search-inspections').addEventListener('input', renderInspections);
+document.getElementById('category-filter-inspections').addEventListener('change', renderInspections);
 document.getElementById('closed-filter-inspections').addEventListener('change', renderInspections);
 document.getElementById('add-inspection').addEventListener('click', function(){ openRecordModal('move_in_inspections', INSPECTION_FIELDS, '入居前点検', null); });
 function exportInspectionsCsv(all){
@@ -1420,14 +1448,15 @@ function filteredRestorations(all){
   const search = document.getElementById('search-restorations').value.trim().toLowerCase();
   const closedFilter = document.getElementById('closed-filter-restorations').value;
   const monthFilter = document.getElementById('month-filter-restorations').value;
+  const categoryFilter = document.getElementById('category-filter-restorations').value;
   return contracts
     .filter(function(c){ return c.record_type === '解約' && c.move_out_date; })
     .map(function(c){ return { contract:c, restoration: latestByContract(restorations, c.id) }; })
     .filter(function(row){
       if (all) return true;
-      const hay = contractLabel(row.contract).toLowerCase();
+      const hay = (contractLabel(row.contract) + ' ' + (row.contract.property_category || '')).toLowerCase();
       const matchesMonth = !monthFilter || (row.contract.move_out_date && row.contract.move_out_date.slice(0,7) === monthFilter);
-      return (!search || hay.indexOf(search) !== -1) && matchesClosedFilter(closedFilter, row.restoration && row.restoration.is_closed) && matchesMonth;
+      return (!search || hay.indexOf(search) !== -1) && (!categoryFilter || row.contract.property_category === categoryFilter) && matchesClosedFilter(closedFilter, row.restoration && row.restoration.is_closed) && matchesMonth;
     });
 }
 function renderRestorations(){
@@ -1435,8 +1464,8 @@ function renderRestorations(){
   document.getElementById('count-restorations').textContent = list.length + '件';
   const table = document.getElementById('table-restorations');
   const thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
-  thead.innerHTML = '<tr><th style="width:20%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:8%;text-align:left">退去日</th><th style="width:8%">業者名</th><th style="width:9%">発注日</th><th style="width:9%">完了日</th><th style="width:8%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:10%">担当者</th></tr>';
-  if (!list.length){ tbody.innerHTML = '<tr><td colspan="11"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
+  thead.innerHTML = '<tr><th style="width:16%">対象物件</th><th style="width:6%">部屋番号</th><th style="width:9%">物件区分</th><th style="width:8%;text-align:left">退去日</th><th style="width:8%">業者名</th><th style="width:8%">発注日</th><th style="width:8%">完了日</th><th style="width:7%">完了確認日</th><th style="width:8%">売上</th><th style="width:7%">原価</th><th style="width:7%">粗利</th><th style="width:8%">担当者</th></tr>';
+  if (!list.length){ tbody.innerHTML = '<tr><td colspan="12"><div class="empty-note">解約の契約がまだありません</div></td></tr>'; return; }
   let totalRevenue = 0, totalCost = 0, totalProfit = 0;
   const rowsHtml = list.map(function(row){
     const r = row.restoration;
@@ -1447,6 +1476,7 @@ function renderRestorations(){
     return '<tr class="clickable-row" data-contract-id="' + row.contract.id + '" data-id="' + (r ? r.id : '') + '">' +
       '<td>' + esc(row.contract.property_name) + '</td>' +
       '<td style="text-align:center">' + esc(row.contract.room_no) + '</td>' +
+      '<td style="text-align:center">' + esc(row.contract.property_category) + '</td>' +
       '<td>' + esc(row.contract.move_out_date) + '</td>' +
       '<td style="text-align:center">' + esc(r ? r.vendor : '') + '</td>' +
       '<td>' + esc(r ? r.order_date : '') + '</td>' +
@@ -1459,7 +1489,7 @@ function renderRestorations(){
     '</tr>';
   }).join('');
   const totalRow = '<tr class="total-row">' +
-    '<td colspan="7">合計金額</td>' +
+    '<td colspan="8">合計金額</td>' +
     '<td style="text-align:right">' + fmtMoney(totalRevenue) + '</td>' +
     '<td style="text-align:right">' + fmtMoney(totalCost) + '</td>' +
     '<td style="text-align:right">' + fmtMoney(totalProfit) + '</td>' +
@@ -1478,6 +1508,7 @@ document.getElementById('table-restorations').addEventListener('click', function
   }
 });
 document.getElementById('search-restorations').addEventListener('input', renderRestorations);
+document.getElementById('category-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('month-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('closed-filter-restorations').addEventListener('change', renderRestorations);
 document.getElementById('add-restoration').addEventListener('click', function(){ openRecordModal('restoration_orders', RESTORATION_FIELDS, '退去・原状回復工事', null); });
@@ -1572,6 +1603,7 @@ function updateContractLinkedDisplays(){
     move_out_date_display: c ? c.move_out_date : null,
     move_out_walkthrough_display: c ? c.move_out_walkthrough_date : null,
     room_no_display: c ? c.room_no : null,
+    property_category_display: c ? c.property_category : null,
     power_off_display: priorTenantPowerStopInfo(c).date,
     application_notes_display: c ? c.contract_checklist_notes : null,
   };
